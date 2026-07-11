@@ -1,6 +1,9 @@
 package construction.ridgeline.unbound
 
+import android.app.AlarmManager
 import android.app.PendingIntent
+import android.app.job.JobInfo
+import android.app.job.JobScheduler
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
@@ -9,10 +12,13 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
+import android.provider.CalendarContract
 import android.view.View
 import android.widget.RemoteViews
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.TextStyle
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
@@ -32,14 +38,16 @@ class UnboundWidgetProvider : AppWidgetProvider() {
                 ctx.resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
 
             // Portrait widgets are minWidth x maxHeight; landscape are maxWidth x minHeight.
-            val wDp = opts.getInt(
-                if (portrait) AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH
-                else AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0
-            ).let { if (it <= 0) 320 else it }
-            val hDp = opts.getInt(
-                if (portrait) AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT
-                else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0
-            ).let { if (it <= 0) 180 else it }
+            // Some launchers under-report or omit these, so be defensive: never trust a
+            // value below the other bound, and fall back to a sane 4x3-ish size.
+            val minWdp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
+            val maxWdp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0)
+            val minHdp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
+            val maxHdp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
+            val wDp = (if (portrait) minWdp else maxOf(maxWdp, minWdp))
+                .let { if (it <= 0) 320 else it }
+            val hDp = (if (portrait) maxOf(maxHdp, minHdp) else minHdp)
+                .let { if (it <= 0) 340 else it }
 
             val showHeader = Prefs.showHeader(ctx)
             val reservedDp = (if (showHeader) HEADER_DP else 0) + STRIP_DP
@@ -69,7 +77,10 @@ class UnboundWidgetProvider : AppWidgetProvider() {
                 rv.setTextColor(R.id.month_label, pal.ink)
                 rv.setTextColor(R.id.brand, pal.faint)
                 rv.setTextColor(R.id.weeks_label, pal.faint)
-                rv.setTextViewText(R.id.weeks_label, Prefs.weeks(ctx, id).toString() + "w")
+                rv.setTextViewText(
+                    R.id.weeks_label,
+                    if (Prefs.mode(ctx, id) == 1) "7d" else Prefs.weeks(ctx, id).toString() + "w"
+                )
                 rv.setInt(R.id.btn_refresh, "setColorFilter", pal.stone)
                 rv.setInt(R.id.btn_settings, "setColorFilter", pal.stone)
             }
@@ -123,13 +134,53 @@ class UnboundWidgetProvider : AppWidgetProvider() {
                 R.id.brand,
                 PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java), flags())
             )
+            // Tap a day: the item's fill-in intent supplies a calendar time URI, and
+            // this template opens the calendar app on that day.
             rv.setPendingIntentTemplate(
                 R.id.week_list,
-                PendingIntent.getActivity(ctx, 1, Intent(ctx, MainActivity::class.java), flags())
+                PendingIntent.getActivity(
+                    ctx, 1, Intent(Intent.ACTION_VIEW),
+                    PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                )
             )
 
             mgr.updateAppWidget(id, rv)
             mgr.notifyAppWidgetViewDataChanged(id, R.id.week_list)
+
+            scheduleMidnightRefresh(ctx)
+            scheduleCalendarChangeJob(ctx)
+        }
+
+        /** Refresh just after midnight so "today" (pill, strike-through) moves on its own. */
+        private fun scheduleMidnightRefresh(ctx: Context) {
+            val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val next = LocalDate.now().plusDays(1).atTime(LocalTime.of(0, 2))
+                .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val pi = PendingIntent.getBroadcast(
+                ctx, 9001,
+                Intent(ctx, UnboundWidgetProvider::class.java).apply {
+                    action = ACTION_REFRESH
+                    data = Uri.parse("unbound://midnight")
+                },
+                flags()
+            )
+            am.setInexactRepeating(AlarmManager.RTC, next, AlarmManager.INTERVAL_DAY, pi)
+        }
+
+        /** Refresh whenever anything in the device calendar changes. */
+        fun scheduleCalendarChangeJob(ctx: Context) {
+            val js = ctx.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
+            val job = JobInfo.Builder(9002, ComponentName(ctx, CalendarChangeJobService::class.java))
+                .addTriggerContentUri(
+                    JobInfo.TriggerContentUri(
+                        CalendarContract.CONTENT_URI,
+                        JobInfo.TriggerContentUri.FLAG_NOTIFY_FOR_DESCENDANTS
+                    )
+                )
+                .setTriggerContentUpdateDelay(2000)
+                .setTriggerContentMaxDelay(30000)
+                .build()
+            js.schedule(job)
         }
 
         fun updateAll(ctx: Context) {

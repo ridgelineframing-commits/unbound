@@ -37,6 +37,7 @@ class ConfigActivity : Activity() {
 
         setContentView(R.layout.activity_config)
 
+        setupMode()
         setupWeeks()
         setupTheme()
         setupOpacity()
@@ -71,6 +72,18 @@ class ConfigActivity : Activity() {
     }
 
     // ---- sections ------------------------------------------------------------
+
+    private fun setupMode() {
+        val btns = listOf(R.id.md_weeks, R.id.md_agenda).map { findViewById<Button>(it) }
+        style(btns, Prefs.mode(this, widgetId))
+        btns.forEachIndexed { i, b ->
+            b.setOnClickListener {
+                Prefs.setMode(this, widgetId, i)
+                style(btns, i)
+                apply()
+            }
+        }
+    }
 
     private fun setupWeeks() {
         val btns = listOf(R.id.wk1, R.id.wk2, R.id.wk3, R.id.wk4).map { findViewById<Button>(it) }

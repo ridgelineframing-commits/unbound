@@ -185,8 +185,9 @@ object WeekRenderer {
                 val w1 = colW - dotSpace - timeIndent - tw - dp(4f)
                 val w2 = colW - dotSpace - timeIndent - dp(4f)
                 val lines =
-                    if (w1 > 0) wrapTwo(ev.title, tPaint, w1, w2)
-                    else listOf(TextUtils.ellipsize(ev.title, tPaint, (colW - dotSpace).coerceAtLeast(1f), TextUtils.TruncateAt.END))
+                    if (w1 > dp(8f)) wrapTwo(ev.title, tPaint, w1, w2)
+                    // Too narrow to fit a title beside the time: title goes on its own line(s).
+                    else listOf("") + wrapTwo(ev.title, tPaint, w2.coerceAtLeast(1f), w2.coerceAtLeast(1f))
                 timedRows[i].add(TimedRow(ev, lines, timeLabel))
             }
         }
@@ -250,6 +251,8 @@ object WeekRenderer {
 
         // ---- date numbers (+ month marker on the 1st) --------------------------
         for (i in 0..6) {
+            cv.save()
+            cv.clipRect(i * colW, 0f, (i + 1) * colW, padTop + numH)
             val date = dates[i]
             val isToday = date == today
             val isPast = date.isBefore(today)
@@ -275,6 +278,7 @@ object WeekRenderer {
                 val nx = cx + dp(2f) + numPaint.measureText(numStr) + dp(4f)
                 cv.drawText(mon, nx, ty - ts(1f), monPaint)
             }
+            cv.restore()
         }
 
         // ---- all-day bars -------------------------------------------------------
@@ -301,11 +305,14 @@ object WeekRenderer {
                     val fm = barText.fontMetrics
                     val blockH = s.lines.size * barLineH
                     var ly = y + (laneH - blockH) / 2f
+                    cv.save()
+                    cv.clipRect(rectF) // labels can never spill past the bar
                     for (line in s.lines) {
                         val base = ly + (barLineH - (fm.descent - fm.ascent)) / 2 - fm.ascent
                         cv.drawText(line, 0, line.length, x0 + dp(8f), base, barText)
                         ly += barLineH
                     }
+                    cv.restore()
                 }
             }
             y += laneH + laneGap
@@ -316,6 +323,8 @@ object WeekRenderer {
             y += timedGap
             for (i in 0..6) {
                 var ty = y
+                cv.save()
+                cv.clipRect(i * colW, y, (i + 1) * colW, height.toFloat()) // no cross-column bleed
                 for (row in timedRows[i]) {
                     val ev = row.ev
                     val c = if (ev.color == 0) pal.defaultEv else ev.color
@@ -337,6 +346,7 @@ object WeekRenderer {
                     }
                     ty += row.lines.size * lineH
                 }
+                cv.restore()
             }
         }
 
