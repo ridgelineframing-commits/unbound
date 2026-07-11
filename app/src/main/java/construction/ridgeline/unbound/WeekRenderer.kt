@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.text.TextPaint
 import android.text.TextUtils
 import java.time.Instant
 import java.time.LocalDate
@@ -146,7 +147,7 @@ object WeekRenderer {
         // timed events
         if (timedMax > 0) {
             y += timedGap
-            val tPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = dp(10.5f) }
+            val tPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = dp(10.5f) }
             val mPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 textSize = dp(10.5f)
                 typeface = Typeface.MONOSPACE
