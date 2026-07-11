@@ -11,4 +11,19 @@
         android:adjustViewBounds="true"
         android:scaleType="fitCenter"
         android:contentDescription="Week" />
+
+    <!-- per-day tap zones: tapping a column opens that day in the calendar app -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <View android:id="@+id/tap0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+        <View android:id="@+id/tap1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+        <View android:id="@+id/tap2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+        <View android:id="@+id/tap3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+        <View android:id="@+id/tap4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+        <View android:id="@+id/tap5" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+        <View android:id="@+id/tap6" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+    </LinearLayout>
 </FrameLayout>
