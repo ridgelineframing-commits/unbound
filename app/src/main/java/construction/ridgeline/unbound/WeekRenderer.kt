@@ -112,7 +112,7 @@ object WeekRenderer {
 
         // phase bars
         var y = padTop + numH
-        val barText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val barText = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = dp(11f)
             typeface = Typeface.DEFAULT_BOLD
         }
