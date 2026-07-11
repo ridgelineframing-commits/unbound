@@ -64,7 +64,26 @@ Then tap **↻** on the widget.
 
 ---
 
-## Notes & known edges (v1)
+## What's new in v2.0
+
+- **Themes:** Light, Dark, or Auto (follows your phone's dark mode). Tap the gear to switch.
+- **Transparency:** a Background Opacity slider (20–100%) — the calendar card can float
+  translucently over your wallpaper while text and events stay fully readable.
+- **Fills its space:** if your weeks are light on events, the grid stretches so the calendar
+  always fills the widget instead of leaving dead space. Dense weeks still scroll.
+- **Full titles:** long event names wrap to a second line instead of getting chopped off.
+- **Done days get crossed off:** past days are dimmed and struck through with a slash
+  (toggle in settings).
+- **Today** gets a subtle column highlight plus the date pill; weekends get a faint tint;
+  the 1st of each month is labeled (e.g. `AUG 1`).
+- **Header redesign:** the black bar is gone — a clean header shows the month + year, and you
+  can hide the header entirely for a minimal floating-calendar look.
+- **Start week on Monday** option, and **text size** (Small / Medium / Large).
+- **Settings all in one place:** weeks, theme, opacity, text size, toggles, and calendar
+  checkboxes now live in the gear menu. Changes apply to the widget instantly.
+- Rounded card corners to match modern Android widgets.
+
+## Notes & known edges
 
 - **Auto-refresh** runs about every 30 min (Android's minimum) plus the ↻ button. If you add an
   event elsewhere and want it now, tap ↻.
