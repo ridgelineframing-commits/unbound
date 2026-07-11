@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F4F4F1"
+    android:padding="26dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="UNBOUND"
+        android:textColor="#A8A29E"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:letterSpacing="0.18"
+        android:layout_marginTop="20dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="How many weeks?"
+        android:textColor="#1B1B19"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginTop="6dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="A rolling window that starts on the current week. The list scrolls, so nothing gets hidden."
+        android:textColor="#57534E"
+        android:textSize="14sp"
+        android:lineSpacingExtra="3dp"
+        android:layout_marginTop="6dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="24dp">
+
+        <Button android:id="@+id/wk1" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="1" />
+        <Button android:id="@+id/wk2" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="2" />
+        <Button android:id="@+id/wk3" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="3" />
+        <Button android:id="@+id/wk4" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="4" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tip: you can also resize the widget on your home screen anytime."
+        android:textColor="#A8A29E"
+        android:textSize="12sp"
+        android:layout_marginTop="18dp" />
+</LinearLayout>
