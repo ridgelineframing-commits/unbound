@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Unbound</string>
+    <string name="widget_desc">No more tiny boxes — a rolling 1–4 week calendar.</string>
+</resources>

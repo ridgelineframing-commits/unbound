@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- translucent themed card background -->
+    <ImageView
+        android:id="@+id/bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/bg_light"
+        android:importantForAccessibility="no" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- header -->
+        <LinearLayout
+            android:id="@+id/header"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="4dp">
+
+            <TextView
+                android:id="@+id/month_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="JULY 2026"
+                android:textColor="#1B1B19"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.10" />
+
+            <TextView
+                android:id="@+id/brand"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:paddingStart="10dp"
+                android:text="UNBOUND"
+                android:textColor="#A8A29E"
+                android:textSize="9sp"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.18" />
+
+            <TextView
+                android:id="@+id/weeks_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2w"
+                android:textColor="#A8A29E"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:paddingEnd="8dp" />
+
+            <ImageButton
+                android:id="@+id/btn_refresh"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:padding="6dp"
+                android:src="@drawable/ic_refresh"
+                android:background="@android:color/transparent"
+                android:contentDescription="Refresh" />
+
+            <ImageButton
+                android:id="@+id/btn_settings"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:padding="6dp"
+                android:src="@drawable/ic_settings"
+                android:background="@android:color/transparent"
+                android:contentDescription="Settings" />
+        </LinearLayout>
+
+        <!-- day-of-week strip -->
+        <LinearLayout
+            android:id="@+id/dow_strip"
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:orientation="horizontal">
+
+            <TextView android:id="@+id/dow0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="SUN" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
+            <TextView android:id="@+id/dow1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="MON" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
+            <TextView android:id="@+id/dow2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="TUE" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
+            <TextView android:id="@+id/dow3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="WED" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
+            <TextView android:id="@+id/dow4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="THU" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
+            <TextView android:id="@+id/dow5" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="FRI" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
+            <TextView android:id="@+id/dow6" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="SAT" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <ListView
+                android:id="@+id/week_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:divider="@null"
+                android:dividerHeight="0dp"
+                android:scrollbars="none" />
+
+            <TextView
+                android:id="@+id/empty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:padding="24dp"
+                android:text="Open Unbound once to grant calendar access."
+                android:textColor="#78716C"
+                android:textSize="13sp" />
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F4F4F1"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="26dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="UNBOUND"
+            android:textColor="#A8A29E"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.18"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Widget settings"
+            android:textColor="#1B1B19"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginTop="6dp" />
+
+        <!-- WEEKS -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="WEEKS SHOWN"
+            android:textColor="#A8A29E"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.12"
+            android:layout_marginTop="26dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button android:id="@+id/wk1" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="1" />
+            <Button android:id="@+id/wk2" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="2" />
+            <Button android:id="@+id/wk3" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="3" />
+            <Button android:id="@+id/wk4" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="4" />
+        </LinearLayout>
+
+        <!-- THEME -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="THEME"
+            android:textColor="#A8A29E"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.12"
+            android:layout_marginTop="24dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button android:id="@+id/th_auto" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Auto" />
+            <Button android:id="@+id/th_light" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Light" />
+            <Button android:id="@+id/th_dark" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Dark" />
+        </LinearLayout>
+
+        <!-- OPACITY -->
+        <TextView
+            android:id="@+id/opacity_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="BACKGROUND OPACITY — 100%"
+            android:textColor="#A8A29E"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.12"
+            android:layout_marginTop="24dp" />
+
+        <SeekBar
+            android:id="@+id/opacity_seek"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:max="80"
+            android:progress="80" />
+
+        <!-- TEXT SIZE -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TEXT SIZE"
+            android:textColor="#A8A29E"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.12"
+            android:layout_marginTop="24dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button android:id="@+id/tx_s" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Small" />
+            <Button android:id="@+id/tx_m" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Medium" />
+            <Button android:id="@+id/tx_l" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Large" />
+        </LinearLayout>
+
+        <!-- TOGGLES -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="OPTIONS"
+            android:textColor="#A8A29E"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.12"
+            android:layout_marginTop="24dp" />
+
+        <Switch
+            android:id="@+id/sw_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Show header bar"
+            android:textColor="#1B1B19"
+            android:textSize="15sp" />
+
+        <Switch
+            android:id="@+id/sw_monday"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Start week on Monday"
+            android:textColor="#1B1B19"
+            android:textSize="15sp" />
+
+        <Switch
+            android:id="@+id/sw_strike"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Strike through finished days"
+            android:textColor="#1B1B19"
+            android:textSize="15sp" />
+
+        <!-- CALENDARS -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CALENDARS"
+            android:textColor="#A8A29E"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.12"
+            android:layout_marginTop="24dp" />
+
+        <TextView
+            android:id="@+id/cal_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Open the Unbound app to grant calendar access."
+            android:textColor="#78716C"
+            android:textSize="13sp"
+            android:layout_marginTop="8dp" />
+
+        <LinearLayout
+            android:id="@+id/cal_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="4dp" />
+
+        <Button
+            android:id="@+id/btn_done"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp"
+            android:text="Done" />
+    </LinearLayout>
+</ScrollView>
