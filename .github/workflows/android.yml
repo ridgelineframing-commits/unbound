@@ -35,29 +35,19 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Read version from build.gradle
-        id: version
-        run: |
-          VC=$(grep -oP 'versionCode\s+\K\d+' app/build.gradle)
-          VN=$(grep -oP "versionName\s+'\K[^']+" app/build.gradle)
-          echo "code=$VC" >> "$GITHUB_OUTPUT"
-          echo "name=$VN" >> "$GITHUB_OUTPUT"
-
-      - name: Rename APK for release
-        run: cp app/build/outputs/apk/debug/app-debug.apk "unbound-v${{ steps.version.outputs.name }}.apk"
-
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: unbound-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Publish GitHub Release
+      - name: Publish latest release (permanent download URL)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.code }}
-          name: Unbound v${{ steps.version.outputs.name }}
-          files: unbound-v${{ steps.version.outputs.name }}.apk
-          fail_on_unmatched_files: true
-          make_latest: true
+          tag_name: latest
+          name: Latest Unbound build
+          body: |
+            Auto-built from the newest push.
+            Permanent link: releases/latest/download/app-debug.apk
+          files: app/build/outputs/apk/debug/app-debug.apk
