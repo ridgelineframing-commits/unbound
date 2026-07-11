@@ -31,9 +31,11 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
         recycleAll()
         val weeks = Prefs.weeks(ctx, widgetId)
         val widthPx = Prefs.widthPx(ctx, widgetId)
+        val listHeightPx = Prefs.listHeightPx(ctx, widgetId)
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
-        val start = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+        val firstDay = if (Prefs.weekStartsMonday(ctx)) DayOfWeek.MONDAY else DayOfWeek.SUNDAY
+        val start = today.with(TemporalAdjusters.previousOrSame(firstDay))
         val startMs = start.atStartOfDay(zone).toInstant().toEpochMilli()
         val endMs = start.plusWeeks(weeks.toLong()).atStartOfDay(zone).toInstant().toEpochMilli()
 
@@ -41,10 +43,22 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
             PackageManager.PERMISSION_GRANTED
         val events = if (granted) CalendarRepository.events(ctx, startMs, endMs, Prefs.cals(ctx)) else emptyList()
 
+        val pal = if (Prefs.resolveDark(ctx)) WeekRenderer.DARK else WeekRenderer.LIGHT
+        val textScale = Prefs.textScale(ctx)
+        val strike = Prefs.strikePast(ctx)
+
+        // If content is sparse, stretch each week so the calendar fills the widget.
+        val minWeekH = if (listHeightPx > 0) listHeightPx / weeks else 0
+
         val list = ArrayList<Bitmap>(weeks)
         for (i in 0 until weeks) {
             val ws = start.plusWeeks(i.toLong())
-            list.add(WeekRenderer.renderWeek(ctx, widthPx, ws, today, events))
+            list.add(
+                WeekRenderer.renderWeek(
+                    ctx, widthPx, minWeekH, ws, today, events,
+                    pal, textScale, strike, isFirstWeek = i == 0
+                )
+            )
         }
         items = list
     }
