@@ -64,6 +64,17 @@ Then tap **↻** on the widget.
 
 ---
 
+## What's new in v2.1
+
+- **Fixed:** weeks now reliably stretch to fill the widget (launchers that under-report
+  the widget size get a sane floor), and event text can no longer overlap or bleed into
+  the next day's column.
+- **Tap a day** — opens that day in your calendar app.
+- **Agenda view** — a "today + next 7 days" list mode; switch in the gear settings.
+- **Auto-refresh** — the widget now updates itself just after midnight (so today's
+  highlight and strike-throughs move on their own) and whenever any calendar event on
+  the device is added, edited, or removed.
+
 ## What's new in v2.0
 
 - **Themes:** Light, Dark, or Auto (follows your phone's dark mode). Tap the gear to switch.
