@@ -106,9 +106,7 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
 
     private fun dayIntent(date: LocalDate): Intent {
         val millis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val builder = CalendarContract.CONTENT_URI.buildUpon().appendPath("time")
-        ContentUris.appendId(builder, millis)
-        return Intent().setData(builder.build())
+        return Intent().putExtra(DayOpenActivity.EXTRA_DAY_MS, millis)
     }
 
     override fun getViewAt(position: Int): RemoteViews {

@@ -134,12 +134,14 @@ class UnboundWidgetProvider : AppWidgetProvider() {
                 R.id.brand,
                 PendingIntent.getActivity(ctx, 0, Intent(ctx, MainActivity::class.java), flags())
             )
-            // Tap a day: the item's fill-in intent supplies a calendar time URI, and
-            // this template opens the calendar app on that day.
+            // Tap a day: the item's fill-in intent supplies the day (as an extra), and
+            // this explicit template trampolines into the calendar app. Android 14
+            // forbids mutable PendingIntents with implicit intents, so the template
+            // must target our own activity.
             rv.setPendingIntentTemplate(
                 R.id.week_list,
                 PendingIntent.getActivity(
-                    ctx, 1, Intent(Intent.ACTION_VIEW),
+                    ctx, 1, Intent(ctx, DayOpenActivity::class.java),
                     PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                 )
             )
@@ -147,8 +149,9 @@ class UnboundWidgetProvider : AppWidgetProvider() {
             mgr.updateAppWidget(id, rv)
             mgr.notifyAppWidgetViewDataChanged(id, R.id.week_list)
 
-            scheduleMidnightRefresh(ctx)
-            scheduleCalendarChangeJob(ctx)
+            // Never let background scheduling break a widget update.
+            try { scheduleMidnightRefresh(ctx) } catch (_: Exception) {}
+            try { scheduleCalendarChangeJob(ctx) } catch (_: Exception) {}
         }
 
         /** Refresh just after midnight so "today" (pill, strike-through) moves on its own. */
