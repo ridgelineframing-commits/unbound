@@ -129,9 +129,9 @@ class MainActivity : Activity() {
         val startMs = rangeStart.atStartOfDay(zone).toInstant().toEpochMilli()
         val endMs = rangeStart.plusWeeks(WEEK_COUNT.toLong())
             .atStartOfDay(zone).toInstant().toEpochMilli()
-        val cals = Prefs.cals(this)
+        val hidden = Prefs.hiddenCals(this)
         Thread {
-            val evs = CalendarRepository.events(this, startMs, endMs, cals)
+            val evs = CalendarRepository.events(this, startMs, endMs, hidden)
             runOnUiThread {
                 events = evs
                 adapter.clearCache()
@@ -178,12 +178,12 @@ class MainActivity : Activity() {
         val box = findViewById<LinearLayout>(R.id.cal_list)
         box.removeAllViews()
         if (ok) {
-            val sel = Prefs.cals(this)
+            val hidden = Prefs.hiddenCals(this)
             for (c in CalendarRepository.calendars(this)) {
                 val cb = CheckBox(this)
                 cb.text = c.name
                 cb.setTextColor(pal.ink)
-                cb.isChecked = sel == null || sel.contains(c.id.toString())
+                cb.isChecked = !hidden.contains(c.id.toString())
                 cb.tag = c.id.toString()
                 cb.setOnCheckedChangeListener { _, _ -> saveCals(box) }
                 box.addView(cb)
@@ -192,12 +192,12 @@ class MainActivity : Activity() {
     }
 
     private fun saveCals(box: LinearLayout) {
-        val set = HashSet<String>()
+        val hidden = HashSet<String>()
         for (i in 0 until box.childCount) {
             val cb = box.getChildAt(i) as CheckBox
-            if (cb.isChecked) set.add(cb.tag as String)
+            if (!cb.isChecked) hidden.add(cb.tag as String)
         }
-        Prefs.setCals(this, set)
+        Prefs.setHiddenCals(this, hidden)
         pokeWidgets()
     }
 

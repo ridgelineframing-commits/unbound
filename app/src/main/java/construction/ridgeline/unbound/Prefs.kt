@@ -59,7 +59,12 @@ object Prefs {
             Configuration.UI_MODE_NIGHT_YES
     }
 
-    // -------- calendar filter (global): null == show all --------
-    fun cals(c: Context): Set<String>? = sp(c).getStringSet("cals_global", null)?.let { HashSet(it) }
-    fun setCals(c: Context, s: Set<String>) = sp(c).edit().putStringSet("cals_global", HashSet(s)).apply()
+    // -------- calendar filter (global) --------
+    // Stored as an EXCLUSION list so newly synced calendars show up automatically.
+    // (The old allow-list style silently hid any calendar synced after setup.)
+    fun hiddenCals(c: Context): Set<String> =
+        sp(c).getStringSet("cals_hidden", null)?.let { HashSet(it) } ?: emptySet()
+
+    fun setHiddenCals(c: Context, s: Set<String>) =
+        sp(c).edit().putStringSet("cals_hidden", HashSet(s)).apply()
 }

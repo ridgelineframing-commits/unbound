@@ -35,7 +35,7 @@ object CalendarRepository {
         return out
     }
 
-    fun events(c: Context, startMs: Long, endMs: Long, calFilter: Set<String>?): List<Ev> {
+    fun events(c: Context, startMs: Long, endMs: Long, hiddenCals: Set<String>): List<Ev> {
         val out = ArrayList<Ev>()
         val builder = CalendarContract.Instances.CONTENT_URI.buildUpon()
         ContentUris.appendId(builder, startMs)
@@ -53,7 +53,7 @@ object CalendarRepository {
             c.contentResolver.query(builder.build(), proj, null, null, CalendarContract.Instances.BEGIN + " ASC")?.use { cur ->
                 while (cur.moveToNext()) {
                     val calId = cur.getLong(1)
-                    if (calFilter != null && !calFilter.contains(calId.toString())) continue
+                    if (hiddenCals.contains(calId.toString())) continue
                     out.add(
                         Ev(
                             id = cur.getLong(0),

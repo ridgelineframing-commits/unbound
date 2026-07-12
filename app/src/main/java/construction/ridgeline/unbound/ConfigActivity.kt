@@ -171,12 +171,12 @@ class ConfigActivity : Activity() {
             PackageManager.PERMISSION_GRANTED
         if (!granted) return
         hint.text = "Choose which calendars appear in the widget."
-        val sel = Prefs.cals(this)
+        val hidden = Prefs.hiddenCals(this)
         for (c in CalendarRepository.calendars(this)) {
             val cb = CheckBox(this)
             cb.text = c.name
             cb.setTextColor(0xFF1B1B19.toInt())
-            cb.isChecked = sel == null || sel.contains(c.id.toString())
+            cb.isChecked = !hidden.contains(c.id.toString())
             cb.tag = c.id.toString()
             cb.setOnCheckedChangeListener { _, _ -> saveCals(box) }
             box.addView(cb)
@@ -184,12 +184,12 @@ class ConfigActivity : Activity() {
     }
 
     private fun saveCals(box: LinearLayout) {
-        val set = HashSet<String>()
+        val hidden = HashSet<String>()
         for (i in 0 until box.childCount) {
             val cb = box.getChildAt(i) as CheckBox
-            if (cb.isChecked) set.add(cb.tag as String)
+            if (!cb.isChecked) hidden.add(cb.tag as String)
         }
-        Prefs.setCals(this, set)
+        Prefs.setHiddenCals(this, hidden)
         apply()
     }
 }

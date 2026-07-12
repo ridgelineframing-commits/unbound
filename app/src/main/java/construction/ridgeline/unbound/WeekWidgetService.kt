@@ -51,7 +51,7 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
         if (agenda) {
             val startMs = today.atStartOfDay(zone).toInstant().toEpochMilli()
             val endMs = today.plusDays(AGENDA_DAYS.toLong()).atStartOfDay(zone).toInstant().toEpochMilli()
-            val events = if (granted) CalendarRepository.events(ctx, startMs, endMs, Prefs.cals(ctx)) else emptyList()
+            val events = if (granted) CalendarRepository.events(ctx, startMs, endMs, Prefs.hiddenCals(ctx)) else emptyList()
             // Days stretch to fill the widget; floor keeps rows readable.
             val minDayH = maxOf(if (listHeightPx > 0) listHeightPx / AGENDA_DAYS else 0, (44 * den).toInt())
             val list = ArrayList<Bitmap>(AGENDA_DAYS)
@@ -69,7 +69,7 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
             val start = today.with(TemporalAdjusters.previousOrSame(firstDay))
             val startMs = start.atStartOfDay(zone).toInstant().toEpochMilli()
             val endMs = start.plusWeeks(weeks.toLong()).atStartOfDay(zone).toInstant().toEpochMilli()
-            val events = if (granted) CalendarRepository.events(ctx, startMs, endMs, Prefs.cals(ctx)) else emptyList()
+            val events = if (granted) CalendarRepository.events(ctx, startMs, endMs, Prefs.hiddenCals(ctx)) else emptyList()
 
             // Weeks stretch to fill the widget; floor keeps cells readable even when the
             // launcher under-reports the widget height.
