@@ -11,11 +11,30 @@ android {
         applicationId 'construction.ridgeline.unbound'
         minSdk 26
         targetSdk 34
-        versionCode 4
-        versionName '2.1'
+        versionCode 5
+        versionName '2.1.1'
+    }
+
+    // Optional fixed debug keystore (restored from a CI secret) so every build is
+    // signed with the SAME key — updates then install cleanly over the previous
+    // version. If the file is absent, falls back to the default debug key.
+    signingConfigs {
+        debug {
+            if (file('unbound-debug.keystore').exists()) {
+                storeFile file('unbound-debug.keystore')
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
     }
 
     buildTypes {
+        debug {
+            if (file('unbound-debug.keystore').exists()) {
+                signingConfig signingConfigs.debug
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
