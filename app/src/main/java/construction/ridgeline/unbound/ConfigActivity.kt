@@ -172,10 +172,25 @@ class ConfigActivity : Activity() {
         if (!granted) return
         hint.text = "Choose which calendars appear in the widget."
         val hidden = Prefs.hiddenCals(this)
+        val nowMs = System.currentTimeMillis()
+        val counts = CalendarRepository.instanceCounts(
+            this, nowMs, nowMs + 30L * 24 * 60 * 60 * 1000
+        )
         for (c in CalendarRepository.calendars(this)) {
             val cb = CheckBox(this)
-            cb.text = c.name
-            cb.setTextColor(0xFF1B1B19.toInt())
+            val n = counts[c.id] ?: 0
+            val label = StringBuilder(c.name)
+            label.append("\n").append(n)
+                .append(if (n == 1) " event" else " events")
+                .append(" on device, next 30 days")
+            if (c.account.isNotEmpty() && !c.name.contains(c.account)) {
+                label.append(" · ").append(c.account)
+            }
+            if (!c.syncOn) {
+                label.append("\nSYNC OFF — Google Calendar app › this calendar › Sync")
+            }
+            cb.text = label.toString()
+            cb.setTextColor(if (c.syncOn) 0xFF1B1B19.toInt() else 0xFF8A8F9A.toInt())
             cb.isChecked = !hidden.contains(c.id.toString())
             cb.tag = c.id.toString()
             cb.setOnCheckedChangeListener { _, _ -> saveCals(box) }
