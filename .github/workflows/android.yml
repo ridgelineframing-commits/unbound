@@ -32,6 +32,12 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      - name: Restore stable signing keystore
+        if: ${{ env.KS != '' }}
+        env:
+          KS: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: echo "$KS" | base64 -d > app/unbound-debug.keystore
+
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
