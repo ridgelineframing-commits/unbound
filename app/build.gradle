@@ -11,8 +11,8 @@ android {
         applicationId 'construction.ridgeline.unbound'
         minSdk 26
         targetSdk 34
-        versionCode 5
-        versionName '2.1.1'
+        versionCode 6
+        versionName '2.1.2'
     }
 
     // Optional fixed debug keystore (restored from a CI secret) so every build is
