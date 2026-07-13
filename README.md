@@ -64,6 +64,17 @@ Then tap **↻** on the widget.
 
 ---
 
+## What's new in v3.0 — the "Float" redesign
+
+- **New look, dark-first:** cool ink card with a hairline border and 24dp corners,
+  mint accent for today (filled circle), and a matching deep-green accent in light theme.
+- **Events are chips:** each timed event is a rounded, color-tinted chip — bold time in
+  the calendar's color, full title wrapped underneath. Still no "+3 more", ever.
+- **All-day banners:** multi-day events are now solid color banners with tone-matched text.
+- **Cleaner dates:** centered day numbers, "AUG 1" month-turn marker in the accent color,
+  finished days get a small strike through the number instead of a big slash.
+- **Settings restyled:** dark sheet, mint segmented controls.
+
 ## What's new in v2.1
 
 - **Fixed:** weeks now reliably stretch to fill the widget (launchers that under-report
