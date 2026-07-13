@@ -64,6 +64,18 @@ Then tap **↻** on the widget.
 
 ---
 
+## What's new in v3.1 - Float, finished (the design-handoff spec)
+
+- **Glass cards in the app:** every week is now its own floating glass card over
+  ambient color glows - current week most opaque, others slightly more transparent.
+- **Agenda in the app:** the Weeks | Agenda pill in the header switches the full-screen
+  view; agenda days are glass cards too.
+- **Widget polish:** "July 2026" header (month bold, year faint), weekday strip removed,
+  later weeks slightly dimmed, refresh/menu glyphs at 50%.
+- **Chips finish the spec:** titles wrap fully (never truncated), compact times ("9a",
+  "9:30"), banner text is always a tone-matched dark shade, past banners wash out.
+- **Light theme** matches the 3b spec: 18dp card radius, deep-green accent.
+
 ## What's new in v3.0 — the "Float" redesign
 
 - **New look, dark-first:** cool ink card with a hairline border and 24dp corners,
