@@ -30,7 +30,8 @@ object AgendaRenderer {
         all: List<Ev>,
         pal: WeekRenderer.Palette,
         textScale: Float,
-        appCard: Boolean = false
+        appCard: Boolean = false,
+        alphaScale: Float = 1f
     ): Bitmap {
         val den = ctx.resources.displayMetrics.density
         fun dp(v: Float) = v * den
@@ -99,7 +100,7 @@ object AgendaRenderer {
             val card = RectF(sideInset, vGap, w - sideInset, height - vGap)
             val radius = dp(14f)
             val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = ((fillAlpha * 255).toInt() shl 24) or fillRgb
+                color = ((fillAlpha * alphaScale * 255).toInt().coerceIn(0, 255) shl 24) or fillRgb
             }
             cv.drawRoundRect(card, radius, radius, fill)
             val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {

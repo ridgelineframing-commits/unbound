@@ -47,6 +47,7 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
 
         val pal = if (Prefs.resolveDark(ctx)) WeekRenderer.DARK else WeekRenderer.LIGHT
         val textScale = Prefs.textScale(ctx)
+        val alphaScale = (Prefs.opacity(ctx) / 100f).coerceIn(0.2f, 1f)
 
         if (agenda) {
             val startMs = today.atStartOfDay(zone).toInstant().toEpochMilli()
@@ -58,7 +59,8 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
             val dates = ArrayList<LocalDate>(AGENDA_DAYS)
             for (i in 0 until AGENDA_DAYS) {
                 val d = today.plusDays(i.toLong())
-                list.add(AgendaRenderer.renderDay(ctx, widthPx, minDayH, d, today, events, pal, textScale))
+                list.add(AgendaRenderer.renderDay(ctx, widthPx, minDayH, d, today, events, pal, textScale,
+                    appCard = true, alphaScale = alphaScale))
                 dates.add(d)
             }
             items = list
@@ -83,7 +85,8 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
                     WeekRenderer.renderWeek(
                         ctx, widthPx, minWeekH, ws, today, events,
                         pal, textScale, strike,
-                        isCurrentWeek = i == 0, appCard = false, drawTopRule = i != 0
+                        isCurrentWeek = i == 0, appCard = true, drawTopRule = false,
+                        alphaScale = alphaScale
                     )
                 )
                 dates.add(ws)

@@ -106,7 +106,8 @@ object WeekRenderer {
         strikePast: Boolean,
         isCurrentWeek: Boolean,
         appCard: Boolean,
-        drawTopRule: Boolean
+        drawTopRule: Boolean,
+        alphaScale: Float = 1f
     ): Bitmap {
         val den = ctx.resources.displayMetrics.density
         fun dp(v: Float) = v * den
@@ -226,7 +227,7 @@ object WeekRenderer {
             val fillAlpha = if (pal.dark) (if (isCurrentWeek) 0.72f else 0.62f)
                 else (if (isCurrentWeek) 0.68f else 0.58f)
             val fillRgb = if (pal.dark) CARD_FILL_DARK else CARD_FILL_LIGHT
-            val a = (fillAlpha * 255).toInt()
+            val a = (fillAlpha * alphaScale * 255).toInt().coerceIn(0, 255)
             val card = RectF(sideInset, vGap, w - sideInset, height - vGap)
             val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = (a shl 24) or fillRgb }
             cv.drawRoundRect(card, cardRadius, cardRadius, fill)

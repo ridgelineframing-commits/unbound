@@ -62,17 +62,19 @@ class UnboundWidgetProvider : AppWidgetProvider() {
 
             val dark = Prefs.resolveDark(ctx)
             val pal = if (dark) WeekRenderer.DARK else WeekRenderer.LIGHT
-            val alpha = Prefs.opacity(ctx) * 255 / 100
 
             val rv = RemoteViews(ctx.packageName, R.layout.widget_unbound)
 
-            // themed translucent card
-            rv.setImageViewResource(R.id.bg, if (dark) R.drawable.bg_dark else R.drawable.bg_light)
-            rv.setInt(R.id.bg, "setImageAlpha", alpha)
+            // Float: weeks float as their own glass cards (drawn in the renderer),
+            // so the widget's full-bleed card is gone. Opacity now scales the cards.
+            rv.setViewVisibility(R.id.bg, View.GONE)
 
             // header (Float 3c: "July 2026" sentence case, year at 45%, glyphs at 50%)
             rv.setViewVisibility(R.id.header, if (showHeader) View.VISIBLE else View.GONE)
             if (showHeader) {
+                // header floats in its own small glass pill, like a card
+                rv.setInt(R.id.header, "setBackgroundResource",
+                    if (dark) R.drawable.bg_dark else R.drawable.bg_light)
                 val monday = Prefs.weekStartsMonday(ctx)
                 val start = LocalDate.now().with(
                     TemporalAdjusters.previousOrSame(if (monday) DayOfWeek.MONDAY else DayOfWeek.SUNDAY)
@@ -104,6 +106,8 @@ class UnboundWidgetProvider : AppWidgetProvider() {
             rv.setViewVisibility(R.id.dow_strip, View.GONE)
 
             rv.setTextColor(R.id.empty, pal.stone)
+            rv.setInt(R.id.empty, "setBackgroundResource",
+                if (dark) R.drawable.bg_dark else R.drawable.bg_light)
 
             // list adapter
             val svc = Intent(ctx, WeekWidgetService::class.java)
