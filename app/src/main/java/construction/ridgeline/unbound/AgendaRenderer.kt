@@ -57,17 +57,20 @@ object AgendaRenderer {
         // ---- paints ----------------------------------------------------------
         val headPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = ts(13f)
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
         }
         val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = ts(9.5f)
-            typeface = Typeface.MONOSPACE
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             color = pal.faint
         }
-        val tPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = ts(11.5f) }
-        val mPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val tPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = ts(11.5f)
-            typeface = Typeface.MONOSPACE
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        }
+        val mPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = ts(10.5f)
+            typeface = Typeface.DEFAULT_BOLD
             color = pal.timeText
         }
 
@@ -150,6 +153,9 @@ object AgendaRenderer {
                     val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c }
                     cv.drawCircle(leftPad + ts(4f), midY, ts(3f), dot)
                     val timeLabel = r.timeLabel + "  "
+                    mPaint.color = if (isPast) pal.pastText
+                        else if (pal.dark) WeekRenderer.lighten(c, 0.55f)
+                        else WeekRenderer.darken(c, 0.45f)
                     cv.drawText(timeLabel, textX, baseline, mPaint)
                     val tw = mPaint.measureText(timeLabel)
                     tPaint.color = if (isPast) pal.faint else pal.ink

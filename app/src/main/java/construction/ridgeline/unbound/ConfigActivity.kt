@@ -17,10 +17,10 @@ class ConfigActivity : Activity() {
 
     private var widgetId = AppWidgetManager.INVALID_APPWIDGET_ID
 
-    private val selBg = 0xFF1B1B19.toInt()
-    private val selFg = 0xFFFFFFFF.toInt()
-    private val unselBg = 0xFFE4E3DE.toInt()
-    private val unselFg = 0xFF1B1B19.toInt()
+    private val selBg = 0xFF8FE3C0.toInt()
+    private val selFg = 0xFF101318.toInt()
+    private val unselBg = 0xFF232833.toInt()
+    private val unselFg = 0xFFAEB4BF.toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -190,7 +190,7 @@ class ConfigActivity : Activity() {
                 label.append("\nSYNC OFF — Google Calendar app › this calendar › Sync")
             }
             cb.text = label.toString()
-            cb.setTextColor(if (c.syncOn) 0xFF1B1B19.toInt() else 0xFF8A8F9A.toInt())
+            cb.setTextColor(if (c.syncOn) 0xFFF4F5F7.toInt() else 0xFF6E7683.toInt())
             cb.isChecked = !hidden.contains(c.id.toString())
             cb.tag = c.id.toString()
             cb.setOnCheckedChangeListener { _, _ -> saveCals(box) }

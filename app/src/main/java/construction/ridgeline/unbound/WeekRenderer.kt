@@ -36,35 +36,36 @@ object WeekRenderer {
         val dark: Boolean
     )
 
+    // "Float" theme — cool ink, mint accent, chip-style events.
     val LIGHT = Palette(
-        ink = 0xFF1B1B19.toInt(),
-        stone = 0xFF57534E.toInt(),
-        faint = 0xFFA8A29E.toInt(),
-        line = 0x14000000,
-        defaultEv = 0xFF71717A.toInt(),
-        timeText = 0xFF8A857E.toInt(),
-        todayPill = 0xFF1B1B19.toInt(),
-        todayPillText = 0xFFFFFFFF.toInt(),
-        todayTint = 0x0A1B4ED8,
+        ink = 0xFF1B1E24.toInt(),
+        stone = 0xFF4A4F58.toInt(),
+        faint = 0xFF9AA0AA.toInt(),
+        line = 0x121B1E24,
+        defaultEv = 0xFF6E7683.toInt(),
+        timeText = 0xFF6E7683.toInt(),
+        todayPill = 0xFF1E7A5A.toInt(),
+        todayPillText = 0xFFF4F5F7.toInt(),
+        todayTint = 0x0F1E7A5A,
         weekendTint = 0x05000000,
-        pastText = 0xFFC9C5BF.toInt(),
-        strike = 0x2E57534E,
+        pastText = 0xFFC3C7CE.toInt(),
+        strike = 0x2E4A4F58,
         dark = false
     )
 
     val DARK = Palette(
-        ink = 0xFFE9E7E2.toInt(),
-        stone = 0xFFB0ACA5.toInt(),
-        faint = 0xFF6E6B65.toInt(),
-        line = 0x17FFFFFF,
-        defaultEv = 0xFF8B8B93.toInt(),
-        timeText = 0xFF807C74.toInt(),
-        todayPill = 0xFFE9E7E2.toInt(),
-        todayPillText = 0xFF16150F.toInt(),
-        todayTint = 0x14BFD3FF,
-        weekendTint = 0x06FFFFFF,
-        pastText = 0xFF56534E.toInt(),
-        strike = 0x30B0ACA5,
+        ink = 0xFFF4F5F7.toInt(),
+        stone = 0xFFAEB4BF.toInt(),
+        faint = 0xFF7C828E.toInt(),
+        line = 0x14FFFFFF,
+        defaultEv = 0xFF8B94A6.toInt(),
+        timeText = 0xFF8B94A6.toInt(),
+        todayPill = 0xFF8FE3C0.toInt(),
+        todayPillText = 0xFF101318.toInt(),
+        todayTint = 0x128FE3C0.toInt(),
+        weekendTint = 0x05FFFFFF,
+        pastText = 0xFF565B66.toInt(),
+        strike = 0x30AEB4BF,
         dark = true
     )
 
@@ -139,22 +140,20 @@ object WeekRenderer {
 
         // ---- paints ---------------------------------------------------------
         val barText = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = ts(11f)
+            textSize = ts(10.5f)
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+        }
+        val tPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = ts(10.5f)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        }
+        val mPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = ts(8.5f)
             typeface = Typeface.DEFAULT_BOLD
         }
-        val tPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = ts(10.5f) }
-        val mPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = ts(10.5f)
-            typeface = Typeface.MONOSPACE
-            color = pal.timeText
-        }
         val numPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = ts(12f)
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
-        }
-        val monPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = ts(9f)
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+            textSize = ts(11.5f)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         }
 
         // ---- measure: wrap titles up to 2 lines ------------------------------
@@ -173,25 +172,25 @@ object WeekRenderer {
             maxLines * barLineH + barPadV
         }
 
-        val timeIndent = dp(8f)
-        val dotSpace = dp(10f)
-        val lineH = ts(14.5f)
+        // Timed events render as tinted chips: bold time line, then the wrapped title.
+        val chipPadH = dp(5f)
+        val chipPadV = dp(3.5f)
+        val chipGap = dp(3f)
+        val chipMargin = dp(2f)
+        val timeLineH = ts(11f)
+        val lineH = ts(13.5f)
+        val titleW = (colW - 2 * chipMargin - 2 * chipPadH).coerceAtLeast(1f)
         val timedRows = Array(7) { ArrayList<TimedRow>() }
         for (i in 0..6) {
             for (ev in timed[i]) {
                 val lt = Instant.ofEpochMilli(ev.begin).atZone(zone).toLocalTime()
-                val timeLabel = fmtTime(lt.hour, lt.minute) + " "
-                val tw = mPaint.measureText(timeLabel)
-                val w1 = colW - dotSpace - timeIndent - tw - dp(4f)
-                val w2 = colW - dotSpace - timeIndent - dp(4f)
-                val lines =
-                    if (w1 > dp(8f)) wrapTwo(ev.title, tPaint, w1, w2)
-                    // Too narrow to fit a title beside the time: title goes on its own line(s).
-                    else listOf("") + wrapTwo(ev.title, tPaint, w2.coerceAtLeast(1f), w2.coerceAtLeast(1f))
+                val timeLabel = fmtTime(lt.hour, lt.minute)
+                val lines = wrapTwo(ev.title, tPaint, titleW, titleW)
                 timedRows[i].add(TimedRow(ev, lines, timeLabel))
             }
         }
-        val timedColH = (0..6).map { d -> timedRows[d].sumOf { (it.lines.size * lineH).toDouble() }.toFloat() }
+        fun chipH(r: TimedRow) = 2 * chipPadV + timeLineH + r.lines.size * lineH
+        val timedColH = (0..6).map { d -> timedRows[d].sumOf { (chipH(it) + chipGap).toDouble() }.toFloat() }
         val timedBlock = timedColH.maxOrNull() ?: 0f
 
         // ---- natural height, then stretch to fill allotted space ------------
@@ -230,53 +229,41 @@ object WeekRenderer {
         for (i in 1..6) cv.drawLine(i * colW, 0f, i * colW, height.toFloat(), p)
         if (!isFirstWeek) cv.drawLine(0f, 0f, w.toFloat(), 0f, p)
 
-        // ---- strike through finished days -------------------------------------
-        if (strikePast) {
-            val sp = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = pal.strike
-                strokeWidth = dp(2f)
-                strokeCap = Paint.Cap.ROUND
-            }
-            val inset = dp(7f)
-            for (i in 0..6) {
-                if (dates[i].isBefore(today)) {
-                    val x0 = i * colW
-                    cv.drawLine(
-                        x0 + inset, height - inset,
-                        x0 + colW - inset, inset, sp
-                    )
-                }
-            }
-        }
-
-        // ---- date numbers (+ month marker on the 1st) --------------------------
+        // ---- date numbers: centered; today = filled accent circle;
+        //      month turn shows "AUG 1" in the accent color;
+        //      finished days are dimmed and struck through their number ----------
         for (i in 0..6) {
             cv.save()
             cv.clipRect(i * colW, 0f, (i + 1) * colW, padTop + numH)
             val date = dates[i]
             val isToday = date == today
             val isPast = date.isBefore(today)
-            val cx = i * colW + dp(8f)
+            val cxMid = i * colW + colW / 2f
+            val numStr = if (date.dayOfMonth == 1 && !isToday)
+                date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+                    .uppercase(Locale.getDefault()) + " 1"
+            else date.dayOfMonth.toString()
             if (isToday) {
                 val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = pal.todayPill }
-                val pillW = ts(22f)
-                val rectF = RectF(cx - dp(2f), padTop, cx - dp(2f) + pillW, padTop + ts(20f))
-                cv.drawRoundRect(rectF, ts(10f), ts(10f), bgPaint)
+                cv.drawCircle(cxMid, padTop + ts(10f), ts(10.5f), bgPaint)
                 numPaint.color = pal.todayPillText
+            } else if (date.dayOfMonth == 1) {
+                numPaint.color = if (isPast) pal.pastText else pal.todayPill
             } else {
-                numPaint.color = if (isPast) pal.pastText else pal.stone
+                numPaint.color = if (isPast) pal.pastText else pal.ink
             }
             val fm = numPaint.fontMetrics
             val ty = padTop + (ts(20f) - (fm.descent - fm.ascent)) / 2 - fm.ascent
-            val numStr = date.dayOfMonth.toString()
-            cv.drawText(numStr, cx + dp(2f), ty, numPaint)
-
-            if (date.dayOfMonth == 1) {
-                monPaint.color = if (isPast) pal.pastText else pal.ink
-                val mon = date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
-                    .uppercase(Locale.getDefault())
-                val nx = cx + dp(2f) + numPaint.measureText(numStr) + dp(4f)
-                cv.drawText(mon, nx, ty - ts(1f), monPaint)
+            val tw = numPaint.measureText(numStr)
+            cv.drawText(numStr, cxMid - tw / 2f, ty, numPaint)
+            if (strikePast && isPast) {
+                val sp = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = pal.pastText
+                    strokeWidth = dp(1.2f)
+                    strokeCap = Paint.Cap.ROUND
+                }
+                val midY = padTop + ts(10f)
+                cv.drawLine(cxMid - tw / 2f - dp(2f), midY, cxMid + tw / 2f + dp(2f), midY, sp)
             }
             cv.restore()
         }
@@ -290,18 +277,13 @@ object WeekRenderer {
                 val x0 = s.cs * colW + dp(2f)
                 val x1 = (s.ce + 1) * colW - dp(2f)
                 val rectF = RectF(x0, y, x1, y + laneH)
-                val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = withAlpha(c, if (pal.dark) 0x30 else 0x24)
-                }
-                val rl = if (s.rs) dp(5f) else 0f
-                val rr = if (s.re) dp(5f) else 0f
+                // solid saturated banner with tone-matched text
+                val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c }
+                val rl = if (s.rs) dp(6f) else 0f
+                val rr = if (s.re) dp(6f) else 0f
                 drawRoundRectSides(cv, rectF, rl, rr, bg)
-                if (s.rs) {
-                    val cap = Paint().apply { color = c }
-                    cv.drawRect(x0, y, x0 + dp(3f), y + laneH, cap)
-                }
                 if (s.lines.isNotEmpty()) {
-                    barText.color = if (pal.dark) lighten(c, 0.45f) else darken(c, 0.45f)
+                    barText.color = if (pal.dark) darken(c, 0.78f) else lighten(c, 0.88f)
                     val fm = barText.fontMetrics
                     val blockH = s.lines.size * barLineH
                     var ly = y + (laneH - blockH) / 2f
@@ -318,33 +300,39 @@ object WeekRenderer {
             y += laneH + laneGap
         }
 
-        // ---- timed events ---------------------------------------------------------
+        // ---- timed events: tinted chips -------------------------------------------
         if (timedBlock > 0f) {
             y += timedGap
             for (i in 0..6) {
                 var ty = y
+                val isPastDay = dates[i].isBefore(today)
                 cv.save()
                 cv.clipRect(i * colW, y, (i + 1) * colW, height.toFloat()) // no cross-column bleed
                 for (row in timedRows[i]) {
-                    val ev = row.ev
-                    val c = if (ev.color == 0) pal.defaultEv else ev.color
-                    val cx = i * colW + dp(6f)
-                    val firstMidY = ty + lineH / 2f
-                    val dotP = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c }
-                    cv.drawCircle(cx + dp(2f), firstMidY, ts(2.5f), dotP)
-                    val tw = mPaint.measureText(row.timeLabel)
-                    val fmm = tPaint.fontMetrics
-                    tPaint.color = if (dates[i].isBefore(today)) pal.faint else pal.ink
-                    for ((li, line) in row.lines.withIndex()) {
-                        val baseline = ty + li * lineH + lineH / 2f - (fmm.ascent + fmm.descent) / 2
-                        if (li == 0) {
-                            cv.drawText(row.timeLabel, cx + timeIndent, baseline, mPaint)
-                            cv.drawText(line, 0, line.length, cx + timeIndent + tw, baseline, tPaint)
-                        } else {
-                            cv.drawText(line, 0, line.length, cx + timeIndent, baseline, tPaint)
-                        }
+                    val c = if (row.ev.color == 0) pal.defaultEv else row.ev.color
+                    val h = chipH(row)
+                    val x0 = i * colW + chipMargin
+                    val x1 = (i + 1) * colW - chipMargin
+                    val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = withAlpha(c, if (pal.dark) 0x30 else 0x22)
                     }
-                    ty += row.lines.size * lineH
+                    cv.drawRoundRect(RectF(x0, ty, x1, ty + h), dp(6f), dp(6f), bg)
+                    // bold time in the event's color
+                    mPaint.color = if (isPastDay) pal.pastText
+                        else if (pal.dark) lighten(c, 0.55f) else darken(c, 0.45f)
+                    val fmT = mPaint.fontMetrics
+                    val tBase = ty + chipPadV + (timeLineH - (fmT.descent - fmT.ascent)) / 2 - fmT.ascent
+                    cv.drawText(row.timeLabel, x0 + chipPadH, tBase, mPaint)
+                    // title below, full wrap
+                    tPaint.color = if (isPastDay) pal.faint else pal.ink
+                    val fmm = tPaint.fontMetrics
+                    var ly = ty + chipPadV + timeLineH
+                    for (line in row.lines) {
+                        val base = ly + (lineH - (fmm.descent - fmm.ascent)) / 2 - fmm.ascent
+                        cv.drawText(line, 0, line.length, x0 + chipPadH, base, tPaint)
+                        ly += lineH
+                    }
+                    ty += h + chipGap
                 }
                 cv.restore()
             }
@@ -386,14 +374,14 @@ object WeekRenderer {
 
     private fun withAlpha(c: Int, a: Int): Int = (a shl 24) or (c and 0x00FFFFFF)
 
-    private fun darken(c: Int, f: Float): Int {
+    fun darken(c: Int, f: Float): Int {
         val r = (((c shr 16) and 0xFF) * (1 - f)).toInt()
         val g = (((c shr 8) and 0xFF) * (1 - f)).toInt()
         val b = ((c and 0xFF) * (1 - f)).toInt()
         return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
     }
 
-    private fun lighten(c: Int, f: Float): Int {
+    fun lighten(c: Int, f: Float): Int {
         val r = ((c shr 16) and 0xFF)
         val g = ((c shr 8) and 0xFF)
         val b = (c and 0xFF)

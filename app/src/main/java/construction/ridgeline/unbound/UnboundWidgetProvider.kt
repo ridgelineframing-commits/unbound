@@ -71,8 +71,8 @@ class UnboundWidgetProvider : AppWidgetProvider() {
                 val start = LocalDate.now().with(
                     TemporalAdjusters.previousOrSame(if (monday) DayOfWeek.MONDAY else DayOfWeek.SUNDAY)
                 )
-                val monthLabel = start.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
-                    .uppercase(Locale.getDefault()) + " " + start.year
+                val monthLabel = start.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) +
+                    " " + start.year
                 rv.setTextViewText(R.id.month_label, monthLabel)
                 rv.setTextColor(R.id.month_label, pal.ink)
                 rv.setTextColor(R.id.brand, pal.faint)
@@ -98,7 +98,7 @@ class UnboundWidgetProvider : AppWidgetProvider() {
                 rv.setTextViewText(dowIds[i], labels[i])
                 val isToday = labels[i] == todayDow.getDisplayName(TextStyle.SHORT, Locale.US)
                     .uppercase(Locale.US)
-                rv.setTextColor(dowIds[i], if (isToday) pal.ink else pal.faint)
+                rv.setTextColor(dowIds[i], if (isToday) pal.todayPill else pal.faint)
             }
 
             rv.setTextColor(R.id.empty, pal.stone)
