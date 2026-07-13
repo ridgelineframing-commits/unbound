@@ -19,34 +19,62 @@
             android:id="@+id/month_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="JULY 2026"
-            android:textColor="#1B1B19"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:fontFamily="monospace"
-            android:letterSpacing="0.08" />
+            android:text="July 2026"
+            android:textColor="#F4F5F7"
+            android:textSize="20sp"
+            android:fontFamily="sans-serif-medium" />
 
         <TextView
             android:id="@+id/brand"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:paddingStart="12dp"
-            android:text="UNBOUND"
-            android:textColor="#A8A29E"
-            android:textSize="10sp"
-            android:fontFamily="monospace"
-            android:letterSpacing="0.18" />
+            android:text=""
+            android:textSize="10sp" />
+
+        <LinearLayout
+            android:id="@+id/seg_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="2dp">
+
+            <TextView
+                android:id="@+id/seg_weeks"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="Weeks"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-medium" />
+
+            <TextView
+                android:id="@+id/seg_agenda"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="Agenda"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-medium" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/btn_today"
             android:layout_width="wrap_content"
-            android:layout_height="36dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="8dp"
             android:minWidth="0dp"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:text="Today"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:background="@android:color/transparent" />
 
         <ImageButton
             android:id="@+id/btn_app_settings"
