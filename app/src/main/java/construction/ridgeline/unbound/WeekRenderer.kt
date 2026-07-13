@@ -19,35 +19,35 @@ import java.util.Locale
 
 object WeekRenderer {
 
-    /** Theme palette for everything drawn on the canvas. */
+    /** Theme palette for everything drawn on the canvas ("Float" 2c spec). */
     data class Palette(
         val ink: Int,            // primary text
         val stone: Int,          // secondary text
         val faint: Int,          // tertiary text / labels
-        val line: Int,           // grid hairlines
+        val line: Int,           // hairline dividers
         val defaultEv: Int,      // fallback event color
-        val timeText: Int,       // timed-event time stamp
-        val todayPill: Int,      // background of today's date pill
-        val todayPillText: Int,
-        val todayTint: Int,      // wash over today's column
-        val weekendTint: Int,    // wash over Sat/Sun columns
+        val timeText: Int,       // timed-event time stamp fallback
+        val todayPill: Int,      // accent: today circle, selection, toggles
+        val todayPillText: Int,  // text on accent
+        val todayTint: Int,      // (kept for agenda today wash)
+        val weekendTint: Int,    // unused in 2c; kept for compatibility
         val pastText: Int,       // dimmed date number for past days
-        val strike: Int,         // slash across finished days
+        val strike: Int,         // strike through finished day numbers
         val dark: Boolean
     )
 
-    // "Float" theme — cool ink, mint accent, chip-style events.
+    // ---- "Float" 2c tokens ----------------------------------------------------
     val LIGHT = Palette(
         ink = 0xFF1B1E24.toInt(),
         stone = 0xFF4A4F58.toInt(),
-        faint = 0xFF9AA0AA.toInt(),
-        line = 0x121B1E24,
+        faint = 0x731B1E24,          // rgba(27,30,36,.45)
+        line = 0x14000000,
         defaultEv = 0xFF6E7683.toInt(),
         timeText = 0xFF6E7683.toInt(),
-        todayPill = 0xFF1E7A5A.toInt(),
+        todayPill = 0xFF1E7A5A.toInt(),   // deep green accent
         todayPillText = 0xFFF4F5F7.toInt(),
         todayTint = 0x0F1E7A5A,
-        weekendTint = 0x05000000,
+        weekendTint = 0x00000000,
         pastText = 0xFFC3C7CE.toInt(),
         strike = 0x2E4A4F58,
         dark = false
@@ -56,33 +56,43 @@ object WeekRenderer {
     val DARK = Palette(
         ink = 0xFFF4F5F7.toInt(),
         stone = 0xFFAEB4BF.toInt(),
-        faint = 0xFF7C828E.toInt(),
-        line = 0x14FFFFFF,
+        faint = 0x66F4F5F7,          // rgba(244,245,247,.4)
+        line = 0x14FFFFFF,           // rgba(255,255,255,.08)
         defaultEv = 0xFF8B94A6.toInt(),
         timeText = 0xFF8B94A6.toInt(),
-        todayPill = 0xFF8FE3C0.toInt(),
+        todayPill = 0xFF8FE3C0.toInt(),   // mint accent
         todayPillText = 0xFF101318.toInt(),
         todayTint = 0x128FE3C0.toInt(),
-        weekendTint = 0x05FFFFFF,
+        weekendTint = 0x00000000,
         pastText = 0xFF565B66.toInt(),
         strike = 0x30AEB4BF,
         dark = true
     )
 
+    // Glass card (app screens). Widget uses the bg_* drawables instead.
+    private const val CARD_FILL_DARK = 0x141820          // rgb
+    private const val CARD_STROKE_DARK = 0x21FFFFFF      // rgba(255,255,255,.13)
+    private const val CARD_FILL_LIGHT = 0xFFFFFF
+    private const val CARD_STROKE_LIGHT = 0xE6FFFFFF.toInt()  // rgba(255,255,255,.9)
+
     private const val MAX_BYTES = 3_500_000
+    private const val MAX_TITLE_LINES = 5
 
     private data class Seg(
         val ev: Ev, val cs: Int, val ce: Int, val rs: Boolean, val re: Boolean,
-        var lines: List<CharSequence> = emptyList()
+        var label: CharSequence = ""
     )
 
     private data class TimedRow(val ev: Ev, val lines: List<CharSequence>, val timeLabel: String)
 
     /**
-     * Renders one week strip.
+     * Renders one week strip per the Float 2c spec.
      *
-     * @param minHeightPx if the week's natural content height is smaller, the cell
-     *   grid is stretched so the widget always fills its allotted space.
+     * @param minHeightPx stretch the strip to at least this height.
+     * @param isCurrentWeek current week gets the most opaque card (app) / full-strength dates (widget).
+     * @param appCard true = draw this week as its own glass card (app screens);
+     *   false = transparent strip for the widget (the widget's single card is the RemoteViews bg).
+     * @param drawTopRule widget mode: hairline separator above this week (all but the first).
      */
     fun renderWeek(
         ctx: Context,
@@ -94,18 +104,31 @@ object WeekRenderer {
         pal: Palette,
         textScale: Float,
         strikePast: Boolean,
-        isFirstWeek: Boolean
+        isCurrentWeek: Boolean,
+        appCard: Boolean,
+        drawTopRule: Boolean
     ): Bitmap {
         val den = ctx.resources.displayMetrics.density
         fun dp(v: Float) = v * den
         fun ts(v: Float) = v * den * textScale
         val zone = ZoneId.systemDefault()
         val w = widthPx.coerceIn(240, 1600)
-        val colW = w / 7f
+
+        // ---- geometry --------------------------------------------------------
+        val sideInset = if (appCard) dp(12f) else dp(2f)
+        val vGap = if (appCard) dp(5f) else 0f            // 10dp between stacked cards
+        val cardPad = if (appCard) dp(10f) else dp(4f)
+        val cardRadius = if (pal.dark) dp(22f) else dp(18f)
+        val innerLeft = sideInset + cardPad
+        val innerW = w - 2 * (sideInset + cardPad)
+        val colGap = dp(3f)
+        val colW = (innerW - 6 * colGap) / 7f
+        fun colX(i: Int) = innerLeft + i * (colW + colGap)
+
         val dates = (0..6).map { weekStart.plusDays(it.toLong()) }
         val weekEnd = dates[6]
 
-        // ---- bucket events -------------------------------------------------
+        // ---- bucket events ---------------------------------------------------
         val segs = ArrayList<Seg>()
         val timed = Array(7) { ArrayList<Ev>() }
         for (ev in all) {
@@ -125,7 +148,7 @@ object WeekRenderer {
             }
         }
 
-        // ---- greedy lane packing for all-day bars ---------------------------
+        // ---- greedy lane packing for all-day banners --------------------------
         val sorted = segs.sortedWith(compareBy({ it.cs }, { -(it.ce - it.cs) }))
         val lanes = ArrayList<ArrayList<Seg>>()
         for (s in sorted) {
@@ -138,9 +161,10 @@ object WeekRenderer {
             if (!placed) lanes.add(arrayListOf(s))
         }
 
-        // ---- paints ---------------------------------------------------------
+        // ---- paints ------------------------------------------------------------
+        val dimWeek = !appCard && !isCurrentWeek   // widget: later weeks slightly dimmer
         val barText = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = ts(10.5f)
+            textSize = ts(9.5f)
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
         }
         val tPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -152,109 +176,102 @@ object WeekRenderer {
             typeface = Typeface.DEFAULT_BOLD
         }
         val numPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = ts(11.5f)
+            textSize = if (dimWeek) ts(10.5f) else ts(11.5f)
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         }
 
-        // ---- measure: wrap titles up to 2 lines ------------------------------
-        val barLineH = ts(14f)
-        val barPadV = ts(6f)
+        // ---- measure banners (single line, ellipsized) -------------------------
+        val laneH = ts(20f)
+        val laneGap = dp(3f)
         for (lane in lanes) for (s in lane) {
-            if (s.rs || s.cs == 0) {
-                val x0 = s.cs * colW + dp(2f)
-                val x1 = (s.ce + 1) * colW - dp(2f)
-                val avail = x1 - x0 - dp(10f) - dp(6f)
-                s.lines = if (avail > 0) wrapTwo(s.ev.title, barText, avail, avail) else emptyList()
-            }
+            val x0 = colX(s.cs)
+            val x1 = colX(s.ce) + colW
+            val avail = x1 - x0 - dp(14f)
+            s.label = if (avail > 0)
+                TextUtils.ellipsize(s.ev.title, barText, avail, TextUtils.TruncateAt.END) else ""
         }
-        val laneHeights = lanes.map { lane ->
-            val maxLines = lane.maxOf { if (it.lines.size > 1) 2 else 1 }
-            maxLines * barLineH + barPadV
-        }
+        val laneBlock = if (lanes.isEmpty()) 0f else lanes.size * (laneH + laneGap)
 
-        // Timed events render as tinted chips: bold time line, then the wrapped title.
+        // ---- measure chips: time line + fully wrapped title ---------------------
         val chipPadH = dp(5f)
         val chipPadV = dp(3.5f)
-        val chipGap = dp(3f)
-        val chipMargin = dp(2f)
+        val chipGap = dp(3.5f)
         val timeLineH = ts(11f)
-        val lineH = ts(13.5f)
-        val titleW = (colW - 2 * chipMargin - 2 * chipPadH).coerceAtLeast(1f)
+        val lineH = ts(13f)
+        val titleW = (colW - 2 * chipPadH).coerceAtLeast(1f)
         val timedRows = Array(7) { ArrayList<TimedRow>() }
         for (i in 0..6) {
             for (ev in timed[i]) {
                 val lt = Instant.ofEpochMilli(ev.begin).atZone(zone).toLocalTime()
-                val timeLabel = fmtTime(lt.hour, lt.minute)
-                val lines = wrapTwo(ev.title, tPaint, titleW, titleW)
-                timedRows[i].add(TimedRow(ev, lines, timeLabel))
+                timedRows[i].add(TimedRow(ev, wrapN(ev.title, tPaint, titleW), fmtTime(lt.hour, lt.minute)))
             }
         }
         fun chipH(r: TimedRow) = 2 * chipPadV + timeLineH + r.lines.size * lineH
         val timedColH = (0..6).map { d -> timedRows[d].sumOf { (chipH(it) + chipGap).toDouble() }.toFloat() }
         val timedBlock = timedColH.maxOrNull() ?: 0f
 
-        // ---- natural height, then stretch to fill allotted space ------------
-        val padTop = dp(6f)
-        val padBottom = dp(8f)
+        // ---- natural height, then stretch --------------------------------------
         val numH = ts(24f)
-        val laneGap = dp(3f)
-        val laneBlock = laneHeights.sum() + lanes.size * laneGap
-        val timedGap = if (timedBlock > 0f) dp(3f) else 0f
-        var height = (padTop + numH + laneBlock + timedGap + timedBlock + padBottom).toInt()
+        val gapAfterNums = if (laneBlock > 0f || timedBlock > 0f) dp(3f) else 0f
+        val gapAfterLanes = if (laneBlock > 0f && timedBlock > 0f) dp(2f) else 0f
+        var height = (2 * vGap + 2 * cardPad + numH + gapAfterNums + laneBlock + gapAfterLanes + timedBlock).toInt()
         val minH = maxOf(dp(58f).toInt(), minHeightPx)
         if (height < minH) height = minH
 
         var bmp = Bitmap.createBitmap(w, height, Bitmap.Config.ARGB_8888)
         val cv = Canvas(bmp)
 
-        // ---- column washes ---------------------------------------------------
-        val wash = Paint()
-        for (i in 0..6) {
-            val d = dates[i]
-            val x0 = i * colW
-            if (d.dayOfWeek.value >= 6) { // Sat / Sun
-                wash.color = pal.weekendTint
-                cv.drawRect(x0, 0f, x0 + colW, height.toFloat(), wash)
+        // ---- card / separators ---------------------------------------------------
+        if (appCard) {
+            val fillAlpha = if (pal.dark) (if (isCurrentWeek) 0.72f else 0.62f)
+                else (if (isCurrentWeek) 0.68f else 0.58f)
+            val fillRgb = if (pal.dark) CARD_FILL_DARK else CARD_FILL_LIGHT
+            val a = (fillAlpha * 255).toInt()
+            val card = RectF(sideInset, vGap, w - sideInset, height - vGap)
+            val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = (a shl 24) or fillRgb }
+            cv.drawRoundRect(card, cardRadius, cardRadius, fill)
+            val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = if (den < 2f) 1f else den * 0.75f
+                color = if (pal.dark) CARD_STROKE_DARK else CARD_STROKE_LIGHT
             }
-            if (d == today) {
-                wash.color = pal.todayTint
-                cv.drawRect(x0, 0f, x0 + colW, height.toFloat(), wash)
-            }
+            cv.drawRoundRect(card, cardRadius, cardRadius, stroke)
+        } else if (drawTopRule) {
+            val p = Paint().apply { color = pal.line }
+            cv.drawRect(innerLeft, 0f, w - innerLeft,
+                if (den * 0.5f < 1f) 1f else den * 0.5f, p)
         }
 
-        // ---- grid -------------------------------------------------------------
-        val p = Paint(Paint.ANTI_ALIAS_FLAG)
-        p.color = pal.line
-        p.strokeWidth = if (den * 0.5f < 1f) 1f else den * 0.5f
-        for (i in 1..6) cv.drawLine(i * colW, 0f, i * colW, height.toFloat(), p)
-        if (!isFirstWeek) cv.drawLine(0f, 0f, w.toFloat(), 0f, p)
+        val contentTop = vGap + cardPad
 
-        // ---- date numbers: centered; today = filled accent circle;
-        //      month turn shows "AUG 1" in the accent color;
-        //      finished days are dimmed and struck through their number ----------
+        // ---- date row: centered numbers, accent today circle, AUG 1, strike -----
         for (i in 0..6) {
-            cv.save()
-            cv.clipRect(i * colW, 0f, (i + 1) * colW, padTop + numH)
             val date = dates[i]
             val isToday = date == today
             val isPast = date.isBefore(today)
-            val cxMid = i * colW + colW / 2f
+            val cxMid = colX(i) + colW / 2f
             val numStr = if (date.dayOfMonth == 1 && !isToday)
                 date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
                     .uppercase(Locale.getDefault()) + " 1"
             else date.dayOfMonth.toString()
             if (isToday) {
                 val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = pal.todayPill }
-                cv.drawCircle(cxMid, padTop + ts(10f), ts(10.5f), bgPaint)
+                cv.drawCircle(cxMid, contentTop + ts(10f), ts(10.5f), bgPaint)
                 numPaint.color = pal.todayPillText
             } else if (date.dayOfMonth == 1) {
                 numPaint.color = if (isPast) pal.pastText else pal.todayPill
             } else {
-                numPaint.color = if (isPast) pal.pastText else pal.ink
+                numPaint.color = when {
+                    isPast -> pal.pastText
+                    dimWeek -> pal.stone
+                    else -> pal.ink
+                }
             }
             val fm = numPaint.fontMetrics
-            val ty = padTop + (ts(20f) - (fm.descent - fm.ascent)) / 2 - fm.ascent
+            val ty = contentTop + (ts(20f) - (fm.descent - fm.ascent)) / 2 - fm.ascent
             val tw = numPaint.measureText(numStr)
+            cv.save()
+            cv.clipRect(colX(i) - colGap / 2, contentTop, colX(i) + colW + colGap / 2, contentTop + numH)
             cv.drawText(numStr, cxMid - tw / 2f, ty, numPaint)
             if (strikePast && isPast) {
                 val sp = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -262,68 +279,66 @@ object WeekRenderer {
                     strokeWidth = dp(1.2f)
                     strokeCap = Paint.Cap.ROUND
                 }
-                val midY = padTop + ts(10f)
+                val midY = contentTop + ts(10f)
                 cv.drawLine(cxMid - tw / 2f - dp(2f), midY, cxMid + tw / 2f + dp(2f), midY, sp)
             }
             cv.restore()
         }
 
-        // ---- all-day bars -------------------------------------------------------
-        var y = padTop + numH
-        for ((li, lane) in lanes.withIndex()) {
-            val laneH = laneHeights[li]
+        // ---- all-day banners: solid color, tone-matched dark text ----------------
+        var y = contentTop + numH + gapAfterNums
+        for (lane in lanes) {
             for (s in lane) {
                 val c = if (s.ev.color == 0) pal.defaultEv else s.ev.color
-                val x0 = s.cs * colW + dp(2f)
-                val x1 = (s.ce + 1) * colW - dp(2f)
+                val x0 = colX(s.cs)
+                val x1 = colX(s.ce) + colW
                 val rectF = RectF(x0, y, x1, y + laneH)
-                // solid saturated banner with tone-matched text
-                val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = c }
+                val isPastBanner = dates[s.ce].isBefore(today)
+                val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = c
+                    alpha = if (isPastBanner) 0x66 else 0xFF
+                }
                 val rl = if (s.rs) dp(6f) else 0f
                 val rr = if (s.re) dp(6f) else 0f
                 drawRoundRectSides(cv, rectF, rl, rr, bg)
-                if (s.lines.isNotEmpty()) {
-                    barText.color = if (pal.dark) darken(c, 0.78f) else lighten(c, 0.88f)
+                if (s.label.isNotEmpty()) {
+                    barText.color = darken(c, 0.72f)
+                    if (isPastBanner) barText.alpha = 0x99
                     val fm = barText.fontMetrics
-                    val blockH = s.lines.size * barLineH
-                    var ly = y + (laneH - blockH) / 2f
+                    val base = y + (laneH - (fm.descent - fm.ascent)) / 2 - fm.ascent
                     cv.save()
-                    cv.clipRect(rectF) // labels can never spill past the bar
-                    for (line in s.lines) {
-                        val base = ly + (barLineH - (fm.descent - fm.ascent)) / 2 - fm.ascent
-                        cv.drawText(line, 0, line.length, x0 + dp(8f), base, barText)
-                        ly += barLineH
-                    }
+                    cv.clipRect(rectF)
+                    cv.drawText(s.label, 0, s.label.length, x0 + dp(7f), base, barText)
                     cv.restore()
+                    barText.alpha = 0xFF
                 }
             }
             y += laneH + laneGap
         }
+        y += gapAfterLanes
 
         // ---- timed events: tinted chips -------------------------------------------
         if (timedBlock > 0f) {
-            y += timedGap
+            val chipAlpha = if (pal.dark) 0x30 else 0x26
             for (i in 0..6) {
                 var ty = y
                 val isPastDay = dates[i].isBefore(today)
                 cv.save()
-                cv.clipRect(i * colW, y, (i + 1) * colW, height.toFloat()) // no cross-column bleed
+                cv.clipRect(colX(i) - colGap / 2, y, colX(i) + colW + colGap / 2, height.toFloat())
                 for (row in timedRows[i]) {
                     val c = if (row.ev.color == 0) pal.defaultEv else row.ev.color
                     val h = chipH(row)
-                    val x0 = i * colW + chipMargin
-                    val x1 = (i + 1) * colW - chipMargin
-                    val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                        color = withAlpha(c, if (pal.dark) 0x30 else 0x22)
-                    }
+                    val x0 = colX(i)
+                    val x1 = colX(i) + colW
+                    val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = withAlpha(c, chipAlpha) }
                     cv.drawRoundRect(RectF(x0, ty, x1, ty + h), dp(6f), dp(6f), bg)
-                    // bold time in the event's color
+                    // time on its own line, bold, in a lightened/darkened calendar color
                     mPaint.color = if (isPastDay) pal.pastText
                         else if (pal.dark) lighten(c, 0.55f) else darken(c, 0.45f)
                     val fmT = mPaint.fontMetrics
                     val tBase = ty + chipPadV + (timeLineH - (fmT.descent - fmT.ascent)) / 2 - fmT.ascent
                     cv.drawText(row.timeLabel, x0 + chipPadH, tBase, mPaint)
-                    // title below, full wrap
+                    // full title below in ink, never truncated
                     tPaint.color = if (isPastDay) pal.faint else pal.ink
                     val fmm = tPaint.fontMetrics
                     var ly = ty + chipPadV + timeLineH
@@ -351,25 +366,33 @@ object WeekRenderer {
         return bmp
     }
 
-    /** Break text into at most two lines; the second line is ellipsized. */
-    private fun wrapTwo(text: String, paint: TextPaint, w1: Float, w2: Float): List<CharSequence> {
-        if (paint.measureText(text) <= w1) return listOf(text)
-        var n = paint.breakText(text, true, w1, null)
-        if (n <= 0) n = 1
-        val cut = text.lastIndexOf(' ', n - 1)
-        if (cut > 0 && cut >= n / 2) n = cut
-        val line1 = text.substring(0, n).trimEnd()
-        val rest = text.substring(n).trimStart()
-        if (rest.isEmpty()) return listOf(line1)
-        val line2 = TextUtils.ellipsize(rest, paint, w2.coerceAtLeast(1f), TextUtils.TruncateAt.END)
-        return listOf(line1, line2)
+    /** Wrap text to as many lines as needed (capped), last line ellipsized if over the cap. */
+    private fun wrapN(text: String, paint: TextPaint, w: Float): List<CharSequence> {
+        val out = ArrayList<CharSequence>(2)
+        var rest = text.trim()
+        val width = w.coerceAtLeast(1f)
+        while (rest.isNotEmpty() && out.size < MAX_TITLE_LINES) {
+            if (paint.measureText(rest) <= width) { out.add(rest); return out }
+            if (out.size == MAX_TITLE_LINES - 1) {
+                out.add(TextUtils.ellipsize(rest, paint, width, TextUtils.TruncateAt.END))
+                return out
+            }
+            var n = paint.breakText(rest, true, width, null)
+            if (n <= 0) n = 1
+            val cut = rest.lastIndexOf(' ', n - 1)
+            if (cut > 0 && cut >= n / 2) n = cut
+            out.add(rest.substring(0, n).trimEnd())
+            rest = rest.substring(n).trimStart()
+        }
+        return out
     }
 
+    /** "9a" on the hour, "9:30" otherwise (compact, per the 2c mock). */
     private fun fmtTime(h: Int, m: Int): String {
         val ap = if (h < 12) "a" else "p"
         var hh = h % 12
         if (hh == 0) hh = 12
-        return "$hh:${m.toString().padStart(2, '0')}$ap"
+        return if (m == 0) "$hh$ap" else "$hh:${m.toString().padStart(2, '0')}"
     }
 
     private fun withAlpha(c: Int, a: Int): Int = (a shl 24) or (c and 0x00FFFFFF)

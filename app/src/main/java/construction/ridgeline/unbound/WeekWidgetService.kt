@@ -82,7 +82,8 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
                 list.add(
                     WeekRenderer.renderWeek(
                         ctx, widthPx, minWeekH, ws, today, events,
-                        pal, textScale, strike, isFirstWeek = i == 0
+                        pal, textScale, strike,
+                        isCurrentWeek = i == 0, appCard = false, drawTopRule = i != 0
                     )
                 )
                 dates.add(ws)

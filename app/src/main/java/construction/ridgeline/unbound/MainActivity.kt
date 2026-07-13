@@ -8,8 +8,16 @@ import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.provider.CalendarContract
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -32,7 +40,8 @@ import java.util.Locale
 import kotlin.math.abs
 
 /**
- * Full-screen calendar: the same rolling weeks as the widget, at app size.
+ * Full-screen calendar per the Float 2c spec: glass week cards floating over
+ * ambient radial glows, "July 2026" header with a Weeks | Agenda pill.
  * Scroll through ~a year, tap a day to open it in your calendar app.
  */
 class MainActivity : Activity() {
@@ -42,6 +51,7 @@ class MainActivity : Activity() {
         private const val WEEKS_BACK = 4
         private const val WEEKS_FWD = 52
         private const val WEEK_COUNT = WEEKS_BACK + WEEKS_FWD
+        private const val AGENDA_DAYS = 14
     }
 
     private lateinit var listView: ListView
@@ -50,6 +60,7 @@ class MainActivity : Activity() {
     private var rangeStart: LocalDate = LocalDate.now()
     private var events: List<Ev> = emptyList()
     private var pal: WeekRenderer.Palette = WeekRenderer.LIGHT
+    private var viewMode = 0 // 0 = weeks, 1 = agenda (app-local)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,7 +76,7 @@ class MainActivity : Activity() {
             else requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR), REQ)
         }
         findViewById<Button>(R.id.btn_today).setOnClickListener {
-            listView.setSelection(WEEKS_BACK)
+            listView.setSelection(if (viewMode == 0) WEEKS_BACK else 0)
         }
         findViewById<ImageButton>(R.id.btn_app_settings).setOnClickListener {
             panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
@@ -74,17 +85,17 @@ class MainActivity : Activity() {
             panel.visibility = View.GONE
             refreshAll()
         }
+        findViewById<TextView>(R.id.seg_weeks).setOnClickListener { setMode(0) }
+        findViewById<TextView>(R.id.seg_agenda).setOnClickListener { setMode(1) }
 
-        // month label follows scrolling
+        // month label follows scrolling (weeks mode)
         listView.setOnScrollListener(object : AbsListView.OnScrollListener {
             override fun onScrollStateChanged(v: AbsListView?, state: Int) {}
             override fun onScroll(v: AbsListView?, first: Int, visible: Int, total: Int) {
                 if (total == 0) return
-                val ws = rangeStart.plusWeeks(first.toLong())
-                val mid = ws.plusDays(3)
-                findViewById<TextView>(R.id.month_label).text =
-                    mid.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
-                        .uppercase(Locale.getDefault()) + " " + mid.year
+                val mid = if (viewMode == 0) rangeStart.plusWeeks(first.toLong()).plusDays(3)
+                    else LocalDate.now().plusDays(first.toLong())
+                setMonthLabel(mid)
             }
         })
     }
@@ -101,6 +112,15 @@ class MainActivity : Activity() {
 
     private fun granted(): Boolean =
         checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+
+    private fun setMode(m: Int) {
+        if (viewMode == m) return
+        viewMode = m
+        styleSegments()
+        adapter.clearCache()
+        adapter.notifyDataSetChanged()
+        listView.setSelection(if (m == 0) WEEKS_BACK else 0)
+    }
 
     // ---------------------------------------------------------------------
     // data + theme
@@ -136,32 +156,89 @@ class MainActivity : Activity() {
                 events = evs
                 adapter.clearCache()
                 adapter.notifyDataSetChanged()
-                if (listView.firstVisiblePosition == 0) listView.setSelection(WEEKS_BACK)
+                if (listView.firstVisiblePosition == 0 && viewMode == 0) {
+                    listView.setSelection(WEEKS_BACK)
+                }
             }
         }.start()
         pokeWidgets()
     }
 
-    private fun applyChrome() {
-        val paper = if (pal.dark) 0xFF191917.toInt() else 0xFFF4F4F1.toInt()
-        findViewById<LinearLayout>(R.id.root).setBackgroundColor(paper)
-        findViewById<TextView>(R.id.month_label).setTextColor(pal.ink)
-        findViewById<TextView>(R.id.brand).setTextColor(pal.faint)
-        findViewById<ImageButton>(R.id.btn_app_settings).setColorFilter(pal.stone)
-        val dowIds = intArrayOf(
-            R.id.dow0, R.id.dow1, R.id.dow2, R.id.dow3, R.id.dow4, R.id.dow5, R.id.dow6
-        )
-        val labels = if (Prefs.weekStartsMonday(this))
-            arrayOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
-        else
-            arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
-        val todayLbl = LocalDate.now().dayOfWeek
-            .getDisplayName(TextStyle.SHORT, Locale.US).uppercase(Locale.US)
-        for (i in 0..6) {
-            val tv = findViewById<TextView>(dowIds[i])
-            tv.text = labels[i]
-            tv.setTextColor(if (labels[i] == todayLbl) pal.ink else pal.faint)
+    /** Float bg: base ink + soft ambient radial glows (app screens only). */
+    private fun glowBackground(): LayerDrawable {
+        val base = GradientDrawable().apply {
+            setColor(if (pal.dark) 0xFF101318.toInt() else 0xFFE9EBEF.toInt())
         }
+        val dm = resources.displayMetrics
+        val r = maxOf(dm.widthPixels, dm.heightPixels) * 0.7f
+        fun glow(color: Int, cx: Float, cy: Float) = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR, intArrayOf(color, color and 0x00FFFFFF)
+        ).apply {
+            gradientType = GradientDrawable.RADIAL_GRADIENT
+            gradientRadius = r
+            setGradientCenter(cx, cy)
+        }
+        val glows = if (pal.dark) arrayOf(
+            glow(0x8C405C96.toInt(), 0.15f, 0.05f),  // blue rgba(64,92,150,.55)
+            glow(0x732E6E62, 0.95f, 0.45f),          // green rgba(46,110,98,.45)
+            glow(0x59785AAA, 0.25f, 0.95f)           // purple rgba(120,90,170,.35)
+        ) else arrayOf(
+            glow(0x8C96AFE0.toInt(), 0.15f, 0.05f),  // blue rgba(150,175,224,.55)
+            glow(0x8094CDBE.toInt(), 0.95f, 0.45f),  // teal rgba(148,205,190,.5)
+            glow(0x73C4AAD8, 0.25f, 0.95f)           // lilac rgba(196,170,216,.45)
+        )
+        return LayerDrawable(arrayOf<android.graphics.drawable.Drawable>(base, *glows))
+    }
+
+    private fun setMonthLabel(anchor: LocalDate) {
+        val monthName = anchor.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
+        val label = SpannableString("$monthName ${anchor.year}")
+        label.setSpan(StyleSpan(Typeface.BOLD), 0, monthName.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        label.setSpan(ForegroundColorSpan(pal.ink), 0, monthName.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        label.setSpan(ForegroundColorSpan(pal.faint), monthName.length + 1, label.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        label.setSpan(RelativeSizeSpan(0.62f), monthName.length + 1, label.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        findViewById<TextView>(R.id.month_label).text = label
+    }
+
+    private fun pill(color: Int, radiusDp: Float): GradientDrawable = GradientDrawable().apply {
+        setColor(color)
+        cornerRadius = radiusDp * resources.displayMetrics.density
+    }
+
+    private fun styleSegments() {
+        val box = findViewById<LinearLayout>(R.id.seg_view)
+        box.background = pill(if (pal.dark) 0x12FFFFFF else 0x11000000, 12f)
+        val weeks = findViewById<TextView>(R.id.seg_weeks)
+        val agenda = findViewById<TextView>(R.id.seg_agenda)
+        fun style(tv: TextView, on: Boolean) {
+            if (on) {
+                tv.background = pill(pal.todayPill, 10f)
+                tv.setTextColor(pal.todayPillText)
+                tv.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            } else {
+                tv.background = null
+                tv.setTextColor(pal.faint)
+                tv.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            }
+        }
+        style(weeks, viewMode == 0)
+        style(agenda, viewMode == 1)
+    }
+
+    private fun applyChrome() {
+        findViewById<LinearLayout>(R.id.root).background = glowBackground()
+        setMonthLabel(LocalDate.now())
+        styleSegments()
+        findViewById<View>(R.id.dow_strip).visibility = View.GONE
+        val todayBtn = findViewById<Button>(R.id.btn_today)
+        todayBtn.setTextColor(pal.stone)
+        todayBtn.background = pill(if (pal.dark) 0x12FFFFFF else 0x11000000, 12f)
+        findViewById<ImageButton>(R.id.btn_app_settings)
+            .setColorFilter((0x80 shl 24) or (pal.ink and 0x00FFFFFF))
+        panel.setBackgroundColor(if (pal.dark) 0xF2161A22.toInt() else 0xF2F6F7FA.toInt())
+        findViewById<TextView>(R.id.status).setTextColor(pal.stone)
     }
 
     private fun refreshPanel() {
@@ -240,20 +317,20 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------------------
-    // weeks list
+    // weeks / agenda list
     // ---------------------------------------------------------------------
 
     private inner class WeeksAdapter : BaseAdapter() {
 
-        // small LRU of rendered weeks; evicted bitmaps are left to the GC
+        // small LRU of rendered items; evicted bitmaps are left to the GC
         private val cache = object : LinkedHashMap<Int, Bitmap>(16, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Bitmap>?) =
-                size > 12
+                size > 16
         }
 
         fun clearCache() = cache.clear()
 
-        override fun getCount(): Int = WEEK_COUNT
+        override fun getCount(): Int = if (viewMode == 0) WEEK_COUNT else AGENDA_DAYS
         override fun getItem(position: Int): Any = position
         override fun getItemId(position: Int): Long = position.toLong()
 
@@ -270,20 +347,35 @@ class MainActivity : Activity() {
             else resources.displayMetrics.widthPixels
             val listH = if (parent.height > 0) parent.height
             else (resources.displayMetrics.heightPixels * 0.8f).toInt()
-            val minWeekH = maxOf(listH / 4, (110 * resources.displayMetrics.density).toInt())
 
             val today = LocalDate.now()
-            val ws = rangeStart.plusWeeks(position.toLong())
-            val bmp = cache[position] ?: WeekRenderer.renderWeek(
-                this@MainActivity, width, minWeekH, ws, today, events,
-                pal, Prefs.textScale(this@MainActivity), Prefs.strikePast(this@MainActivity),
-                isFirstWeek = position == 0
-            ).also { cache[position] = it }
+            val den = resources.displayMetrics.density
+            val bmp: Bitmap
+            val tappedDate: (Float, View) -> LocalDate
+
+            if (viewMode == 0) {
+                val minWeekH = maxOf(listH / 4, (110 * den).toInt())
+                val ws = rangeStart.plusWeeks(position.toLong())
+                bmp = cache[position] ?: WeekRenderer.renderWeek(
+                    this@MainActivity, width, minWeekH, ws, today, events,
+                    pal, Prefs.textScale(this@MainActivity), Prefs.strikePast(this@MainActivity),
+                    isCurrentWeek = position == WEEKS_BACK, appCard = true, drawTopRule = false
+                ).also { cache[position] = it }
+                tappedDate = { x, v -> ws.plusDays((x / (v.width / 7f)).toInt().coerceIn(0, 6).toLong()) }
+            } else {
+                val d = today.plusDays(position.toLong())
+                val minDayH = maxOf(listH / 8, (52 * den).toInt())
+                bmp = cache[position] ?: AgendaRenderer.renderDay(
+                    this@MainActivity, width, minDayH, d, today, events,
+                    pal, Prefs.textScale(this@MainActivity), appCard = true
+                ).also { cache[position] = it }
+                tappedDate = { _, _ -> d }
+            }
             iv.setImageBitmap(bmp)
 
             var downX = 0f
             var downY = 0f
-            val slop = 24 * resources.displayMetrics.density
+            val slop = 24 * den
             iv.setOnTouchListener { v, e ->
                 when (e.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
@@ -291,8 +383,7 @@ class MainActivity : Activity() {
                     }
                     MotionEvent.ACTION_UP -> {
                         if (abs(e.x - downX) < slop && abs(e.y - downY) < slop) {
-                            val col = (e.x / (v.width / 7f)).toInt().coerceIn(0, 6)
-                            openDay(ws.plusDays(col.toLong()))
+                            openDay(tappedDate(e.x, v))
                             v.performClick()
                         }
                         true

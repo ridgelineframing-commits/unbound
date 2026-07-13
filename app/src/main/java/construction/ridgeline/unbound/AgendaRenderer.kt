@@ -29,13 +29,16 @@ object AgendaRenderer {
         today: LocalDate,
         all: List<Ev>,
         pal: WeekRenderer.Palette,
-        textScale: Float
+        textScale: Float,
+        appCard: Boolean = false
     ): Bitmap {
         val den = ctx.resources.displayMetrics.density
         fun dp(v: Float) = v * den
         fun ts(v: Float) = v * den * textScale
         val zone = ZoneId.systemDefault()
         val w = widthPx.coerceIn(240, 1600)
+        val sideInset = if (appCard) dp(12f) else 0f
+        val vGap = if (appCard) dp(3f) else 0f
 
         // ---- collect this day's events -------------------------------------
         data class Row(val ev: Ev, val timeLabel: String?)
@@ -75,11 +78,11 @@ object AgendaRenderer {
         }
 
         // ---- measure ----------------------------------------------------------
-        val padTop = dp(7f)
-        val padBottom = dp(7f)
+        val padTop = vGap + dp(7f)
+        val padBottom = vGap + dp(7f)
         val headH = ts(22f)
         val lineH = ts(17f)
-        val leftPad = dp(14f)
+        val leftPad = sideInset + dp(14f)
         val isPast = date.isBefore(today)
         val contentH = if (rows.isEmpty()) lineH else rows.size * lineH
         var height = (padTop + headH + contentH + padBottom).toInt()
@@ -89,12 +92,33 @@ object AgendaRenderer {
         val bmp = Bitmap.createBitmap(w, height, Bitmap.Config.ARGB_8888)
         val cv = Canvas(bmp)
 
-        // today wash + top divider
-        if (date == today) {
-            cv.drawColor(pal.todayTint)
+        if (appCard) {
+            // glass day card (Float spec): translucent fill + hairline border
+            val fillAlpha = if (date == today) 0.78f else if (pal.dark) 0.62f else 0.58f
+            val fillRgb = if (pal.dark) 0x141820 else 0xFFFFFF
+            val card = RectF(sideInset, vGap, w - sideInset, height - vGap)
+            val radius = dp(14f)
+            val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = ((fillAlpha * 255).toInt() shl 24) or fillRgb
+            }
+            cv.drawRoundRect(card, radius, radius, fill)
+            val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = if (den < 2f) 1f else den * 0.75f
+                color = if (pal.dark) 0x21FFFFFF else 0xE6FFFFFF.toInt()
+            }
+            cv.drawRoundRect(card, radius, radius, stroke)
+            if (date == today) {
+                cv.save(); cv.clipRect(card); cv.drawColor(pal.todayTint); cv.restore()
+            }
+        } else {
+            // widget: flat rows over the widget card
+            if (date == today) {
+                cv.drawColor(pal.todayTint)
+            }
+            val line = Paint().apply { color = pal.line }
+            cv.drawRect(0f, 0f, w.toFloat(), if (den * 0.5f < 1f) 1f else den * 0.5f, line)
         }
-        val line = Paint().apply { color = pal.line }
-        cv.drawRect(0f, 0f, w.toFloat(), if (den * 0.5f < 1f) 1f else den * 0.5f, line)
 
         // ---- header: pill date + weekday/month --------------------------------
         val fmHead = headPaint.fontMetrics
@@ -115,14 +139,15 @@ object AgendaRenderer {
         val monName = date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase(Locale.getDefault())
         cv.drawText("$dayName · $monName", leftPad + headPaint.measureText(numStr) + dp(12f), headBase - ts(1f), subPaint)
 
-        // strike for finished days
+        // strike for finished days (through the date, not a full-row slash)
         if (isPast) {
             val sp = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = pal.strike
-                strokeWidth = dp(2f)
+                color = pal.pastText
+                strokeWidth = dp(1.4f)
                 strokeCap = Paint.Cap.ROUND
             }
-            cv.drawLine(dp(8f), height - dp(8f), w - dp(8f), dp(8f), sp)
+            val midY = padTop + headH / 2f
+            cv.drawLine(leftPad - dp(3f), midY, leftPad + headPaint.measureText(numStr) + dp(3f), midY, sp)
         }
 
         // ---- events -------------------------------------------------------------
@@ -145,7 +170,7 @@ object AgendaRenderer {
                     cv.drawRoundRect(RectF(leftPad, midY - ts(4f), leftPad + ts(8f), midY + ts(4f)), ts(2f), ts(2f), chip)
                     tPaint.color = if (isPast) pal.faint else pal.ink
                     tPaint.typeface = Typeface.DEFAULT_BOLD
-                    val avail = w - textX - dp(8f)
+                    val avail = w - sideInset - textX - dp(8f)
                     val label = TextUtils.ellipsize(r.ev.title, tPaint, avail.coerceAtLeast(1f), TextUtils.TruncateAt.END)
                     cv.drawText(label, 0, label.length, textX, baseline, tPaint)
                     tPaint.typeface = Typeface.DEFAULT
@@ -159,7 +184,7 @@ object AgendaRenderer {
                     cv.drawText(timeLabel, textX, baseline, mPaint)
                     val tw = mPaint.measureText(timeLabel)
                     tPaint.color = if (isPast) pal.faint else pal.ink
-                    val avail = w - textX - tw - dp(8f)
+                    val avail = w - sideInset - textX - tw - dp(8f)
                     if (avail > 0) {
                         val label = TextUtils.ellipsize(r.ev.title, tPaint, avail, TextUtils.TruncateAt.END)
                         cv.drawText(label, 0, label.length, textX + tw, baseline, tPaint)
@@ -172,10 +197,11 @@ object AgendaRenderer {
         return bmp
     }
 
+    /** "9a" on the hour, "9:30" otherwise (compact, per the 2c mock). */
     private fun fmtTime(h: Int, m: Int): String {
         val ap = if (h < 12) "a" else "p"
         var hh = h % 12
         if (hh == 0) hh = 12
-        return "$hh:${m.toString().padStart(2, '0')}$ap"
+        return if (m == 0) "$hh$ap" else "$hh:${m.toString().padStart(2, '0')}"
     }
 }

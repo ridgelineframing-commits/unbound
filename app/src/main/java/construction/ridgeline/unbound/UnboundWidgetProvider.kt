@@ -11,8 +11,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
+import android.graphics.Typeface
 import android.os.Bundle
 import android.provider.CalendarContract
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
 import android.view.View
 import android.widget.RemoteViews
 import java.time.DayOfWeek
@@ -50,7 +56,7 @@ class UnboundWidgetProvider : AppWidgetProvider() {
                 .let { if (it <= 0) 340 else it }
 
             val showHeader = Prefs.showHeader(ctx)
-            val reservedDp = (if (showHeader) HEADER_DP else 0) + STRIP_DP
+            val reservedDp = if (showHeader) HEADER_DP else 0 // no weekday strip in Float
             Prefs.setWidthPx(ctx, id, (wDp * den).toInt())
             Prefs.setListHeightPx(ctx, id, ((hDp - reservedDp).coerceAtLeast(0) * den).toInt())
 
@@ -64,42 +70,38 @@ class UnboundWidgetProvider : AppWidgetProvider() {
             rv.setImageViewResource(R.id.bg, if (dark) R.drawable.bg_dark else R.drawable.bg_light)
             rv.setInt(R.id.bg, "setImageAlpha", alpha)
 
-            // header
+            // header (Float 3c: "July 2026" sentence case, year at 45%, glyphs at 50%)
             rv.setViewVisibility(R.id.header, if (showHeader) View.VISIBLE else View.GONE)
             if (showHeader) {
                 val monday = Prefs.weekStartsMonday(ctx)
                 val start = LocalDate.now().with(
                     TemporalAdjusters.previousOrSame(if (monday) DayOfWeek.MONDAY else DayOfWeek.SUNDAY)
                 )
-                val monthLabel = start.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) +
-                    " " + start.year
-                rv.setTextViewText(R.id.month_label, monthLabel)
+                val monthName = start.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
+                val label = SpannableString("$monthName ${start.year}")
+                label.setSpan(StyleSpan(Typeface.BOLD), 0, monthName.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                label.setSpan(ForegroundColorSpan(pal.ink), 0, monthName.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                label.setSpan(ForegroundColorSpan(pal.faint), monthName.length + 1, label.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                label.setSpan(RelativeSizeSpan(0.82f), monthName.length + 1, label.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                rv.setTextViewText(R.id.month_label, label)
                 rv.setTextColor(R.id.month_label, pal.ink)
-                rv.setTextColor(R.id.brand, pal.faint)
+                rv.setViewVisibility(R.id.brand, View.GONE)
                 rv.setTextColor(R.id.weeks_label, pal.faint)
                 rv.setTextViewText(
                     R.id.weeks_label,
                     if (Prefs.mode(ctx, id) == 1) "7d" else Prefs.weeks(ctx, id).toString() + "w"
                 )
-                rv.setInt(R.id.btn_refresh, "setColorFilter", pal.stone)
-                rv.setInt(R.id.btn_settings, "setColorFilter", pal.stone)
+                val glyph = (0x80 shl 24) or (pal.ink and 0x00FFFFFF) // 50% alpha ink
+                rv.setInt(R.id.btn_refresh, "setColorFilter", glyph)
+                rv.setInt(R.id.btn_settings, "setColorFilter", glyph)
             }
 
-            // day-of-week strip (order follows week-start setting)
-            val dowIds = intArrayOf(
-                R.id.dow0, R.id.dow1, R.id.dow2, R.id.dow3, R.id.dow4, R.id.dow5, R.id.dow6
-            )
-            val labels = if (Prefs.weekStartsMonday(ctx))
-                arrayOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
-            else
-                arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
-            val todayDow = LocalDate.now().dayOfWeek
-            for (i in 0..6) {
-                rv.setTextViewText(dowIds[i], labels[i])
-                val isToday = labels[i] == todayDow.getDisplayName(TextStyle.SHORT, Locale.US)
-                    .uppercase(Locale.US)
-                rv.setTextColor(dowIds[i], if (isToday) pal.todayPill else pal.faint)
-            }
+            // Float 2c/3c has no weekday strip — dates carry the row
+            rv.setViewVisibility(R.id.dow_strip, View.GONE)
 
             rv.setTextColor(R.id.empty, pal.stone)
 
