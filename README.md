@@ -64,6 +64,12 @@ Then tap **↻** on the widget.
 
 ---
 
+## What's new in v3.2
+
+- **The widget now matches the app:** each week floats as its own glass card right on
+  your wallpaper (no more single flat panel). The header is a small glass pill, agenda
+  days are cards too, and the Background Opacity slider now controls the cards' glass.
+
 ## What's new in v3.1 - Float, finished (the design-handoff spec)
 
 - **Glass cards in the app:** every week is now its own floating glass card over
