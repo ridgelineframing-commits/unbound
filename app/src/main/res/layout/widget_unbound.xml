@@ -31,12 +31,12 @@
                 android:id="@+id/month_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="JULY 2026"
+                android:text="July 2026"
                 android:textColor="#1B1B19"
-                android:textSize="13sp"
+                android:textSize="14sp"
                 android:textStyle="bold"
-                android:fontFamily="monospace"
-                android:letterSpacing="0.10" />
+                android:fontFamily="sans-serif"
+                android:letterSpacing="0" />
 
             <TextView
                 android:id="@+id/brand"
@@ -87,13 +87,13 @@
             android:layout_height="20dp"
             android:orientation="horizontal">
 
-            <TextView android:id="@+id/dow0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="SUN" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
-            <TextView android:id="@+id/dow1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="MON" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
-            <TextView android:id="@+id/dow2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="TUE" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
-            <TextView android:id="@+id/dow3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="WED" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
-            <TextView android:id="@+id/dow4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="THU" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
-            <TextView android:id="@+id/dow5" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="FRI" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
-            <TextView android:id="@+id/dow6" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="SAT" android:textSize="9sp" android:fontFamily="monospace" android:textColor="#A8A29E" android:letterSpacing="0.08" />
+            <TextView android:id="@+id/dow0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="SUN" android:textSize="9sp" android:fontFamily="sans-serif-medium" android:textColor="#7C828E" android:letterSpacing="0.12" />
+            <TextView android:id="@+id/dow1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="MON" android:textSize="9sp" android:fontFamily="sans-serif-medium" android:textColor="#7C828E" android:letterSpacing="0.12" />
+            <TextView android:id="@+id/dow2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="TUE" android:textSize="9sp" android:fontFamily="sans-serif-medium" android:textColor="#7C828E" android:letterSpacing="0.12" />
+            <TextView android:id="@+id/dow3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="WED" android:textSize="9sp" android:fontFamily="sans-serif-medium" android:textColor="#7C828E" android:letterSpacing="0.12" />
+            <TextView android:id="@+id/dow4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="THU" android:textSize="9sp" android:fontFamily="sans-serif-medium" android:textColor="#7C828E" android:letterSpacing="0.12" />
+            <TextView android:id="@+id/dow5" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="FRI" android:textSize="9sp" android:fontFamily="sans-serif-medium" android:textColor="#7C828E" android:letterSpacing="0.12" />
+            <TextView android:id="@+id/dow6" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:text="SAT" android:textSize="9sp" android:fontFamily="sans-serif-medium" android:textColor="#7C828E" android:letterSpacing="0.12" />
         </LinearLayout>
 
         <FrameLayout
@@ -116,7 +116,7 @@
                 android:gravity="center"
                 android:padding="24dp"
                 android:text="Open Unbound once to grant calendar access."
-                android:textColor="#78716C"
+                android:textColor="#9AA0AA"
                 android:textSize="13sp" />
         </FrameLayout>
     </LinearLayout>
