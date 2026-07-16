@@ -20,7 +20,7 @@ class WeekWidgetService : RemoteViewsService() {
         WeekFactory(applicationContext, intent)
 }
 
-private const val AGENDA_DAYS = 8 // today + next 7
+private const val AGENDA_DAYS = 14 // today + next 13 (two-week span)
 
 class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService.RemoteViewsFactory {
 
