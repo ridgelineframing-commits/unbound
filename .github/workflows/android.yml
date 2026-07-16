@@ -3,6 +3,7 @@ name: Build Unbound APK
 on:
   push:
     branches: [ main, master ]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -49,6 +50,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish latest release (permanent download URL)
+        if: ${{ github.event_name == 'push' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
