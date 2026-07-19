@@ -214,16 +214,23 @@ class UnboundWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(ctx: Context, intent: Intent) {
         super.onReceive(ctx, intent)
-        if (intent.action == ACTION_REFRESH) {
-            val mgr = AppWidgetManager.getInstance(ctx)
-            val id = intent.getIntExtra(
-                AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID
-            )
-            if (id != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                updateWidget(ctx, mgr, id)
-            } else {
-                updateAll(ctx)
+        when (intent.action) {
+            ACTION_REFRESH -> {
+                val mgr = AppWidgetManager.getInstance(ctx)
+                val id = intent.getIntExtra(
+                    AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID
+                )
+                if (id != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                    updateWidget(ctx, mgr, id)
+                } else {
+                    updateAll(ctx)
+                }
             }
+            // After a reboot or an app update the process is fresh: repopulate every
+            // widget and re-arm the midnight alarm + calendar-change job (both lost on
+            // reboot). updateAll -> updateWidget reschedules them per widget.
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED -> updateAll(ctx)
         }
     }
 }

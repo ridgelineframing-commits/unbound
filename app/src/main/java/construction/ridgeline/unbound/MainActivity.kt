@@ -51,7 +51,7 @@ class MainActivity : Activity() {
         private const val WEEKS_BACK = 4
         private const val WEEKS_FWD = 52
         private const val WEEK_COUNT = WEEKS_BACK + WEEKS_FWD
-        private const val AGENDA_DAYS = 14
+        private const val AGENDA_DAYS = 30
     }
 
     private lateinit var listView: ListView
