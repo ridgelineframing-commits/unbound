@@ -48,7 +48,7 @@
             android:layout_marginTop="8dp">
 
             <Button android:id="@+id/md_weeks" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Weeks grid" />
-            <Button android:id="@+id/md_agenda" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Agenda (7 days)" />
+            <Button android:id="@+id/md_agenda" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Agenda (30 days)" />
         </LinearLayout>
 
         <!-- WEEKS -->
@@ -213,5 +213,17 @@
             android:textStyle="bold"
             android:textColor="#101318"
             android:backgroundTint="#8FE3C0" />
+
+        <TextView
+            android:id="@+id/version_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:gravity="center"
+            android:text="Unbound"
+            android:textColor="#5C616B"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.04" />
     </LinearLayout>
 </ScrollView>

@@ -3,6 +3,20 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// A human-readable label that makes every build self-identifying. On CI it folds
+// in the GitHub Actions run number and the short commit SHA; a local build just
+// reads "local". Surfaced in-app via BuildConfig.BUILD_LABEL.
+def ciRun = System.getenv("GITHUB_RUN_NUMBER")
+def ciSha = System.getenv("GITHUB_SHA")
+def buildLabel
+if (ciRun != null && ciSha != null) {
+    buildLabel = "build ${ciRun} · ${ciSha.take(7)}"
+} else if (ciRun != null) {
+    buildLabel = "build ${ciRun}"
+} else {
+    buildLabel = "local"
+}
+
 android {
     namespace 'construction.ridgeline.unbound'
     compileSdk 34
@@ -11,8 +25,13 @@ android {
         applicationId 'construction.ridgeline.unbound'
         minSdk 26
         targetSdk 34
-        versionCode 12
-        versionName '3.2'
+        versionCode 13
+        versionName '3.3'
+        buildConfigField "String", "BUILD_LABEL", "\"${buildLabel}\""
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     // Optional fixed debug keystore (restored from a CI secret) so every build is
