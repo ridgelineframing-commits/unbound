@@ -90,7 +90,7 @@ object AgendaRenderer {
         if (height < minHeightPx) height = minHeightPx
         if (height < dp(40f).toInt()) height = dp(40f).toInt()
 
-        val bmp = Bitmap.createBitmap(w, height, Bitmap.Config.ARGB_8888)
+        var bmp = Bitmap.createBitmap(w, height, Bitmap.Config.ARGB_8888)
         val cv = Canvas(bmp)
 
         if (appCard) {
@@ -195,8 +195,23 @@ object AgendaRenderer {
             }
             cv.restore()
         }
+
+        // ---- keep bitmap under RemoteViews-friendly size ----------------------------
+        // A launcher silently drops an oversized RemoteViews bitmap (Binder limit),
+        // which reads as a blank widget. Downscale as WeekRenderer does.
+        val bytes = w * height * 4
+        if (bytes > MAX_BYTES) {
+            val s = Math.sqrt(MAX_BYTES.toDouble() / bytes).toFloat()
+            val nw = (w * s).toInt().coerceAtLeast(1)
+            val nh = (height * s).toInt().coerceAtLeast(1)
+            val scaled = Bitmap.createScaledBitmap(bmp, nw, nh, true)
+            if (scaled != bmp) bmp.recycle()
+            bmp = scaled
+        }
         return bmp
     }
+
+    private const val MAX_BYTES = 3_500_000
 
     /** "9a" on the hour, "9:30" otherwise (compact, per the 2c mock). */
     private fun fmtTime(h: Int, m: Int): String {

@@ -11,7 +11,7 @@ object Prefs {
     fun weeks(c: Context, id: Int): Int = sp(c).getInt("weeks_$id", 2).coerceIn(1, 4)
     fun setWeeks(c: Context, id: Int, w: Int) = sp(c).edit().putInt("weeks_$id", w.coerceIn(1, 4)).apply()
 
-    /** 0 = weeks grid, 1 = agenda (today + next 13 days) */
+    /** 0 = weeks grid, 1 = agenda (today + next 29 days) */
     fun mode(c: Context, id: Int): Int = sp(c).getInt("mode_$id", 0).coerceIn(0, 1)
     fun setMode(c: Context, id: Int, m: Int) = sp(c).edit().putInt("mode_$id", m.coerceIn(0, 1)).apply()
 
