@@ -45,6 +45,9 @@ class ConfigActivity : Activity() {
         setupToggles()
         setupCalendars()
 
+        findViewById<TextView>(R.id.version_label).text =
+            "Unbound ${BuildConfig.VERSION_NAME} · ${BuildConfig.BUILD_LABEL}"
+
         findViewById<Button>(R.id.btn_done).setOnClickListener {
             apply()
             setResult(

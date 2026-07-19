@@ -54,8 +54,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: Latest Unbound build
+          name: Unbound — build ${{ github.run_number }}
           body: |
-            Auto-built from the newest push.
+            **build ${{ github.run_number }}** · commit ${{ github.sha }}
+            Auto-built from the newest push to `${{ github.ref_name }}`.
+            This same label shows at the bottom of the widget settings screen.
+
             Permanent link: releases/latest/download/app-debug.apk
           files: app/build/outputs/apk/debug/app-debug.apk
