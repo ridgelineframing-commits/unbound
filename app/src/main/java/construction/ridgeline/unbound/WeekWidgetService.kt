@@ -34,7 +34,7 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
     override fun onCreate() {}
 
     override fun onDataSetChanged() {
-        recycleAll()
+        releaseItems()
         val den = ctx.resources.displayMetrics.density
         val widthPx = Prefs.widthPx(ctx, widgetId)
         val listHeightPx = Prefs.listHeightPx(ctx, widgetId)
@@ -97,11 +97,18 @@ class WeekFactory(private val ctx: Context, intent: Intent) : RemoteViewsService
     }
 
     override fun onDestroy() {
-        recycleAll()
+        releaseItems()
     }
 
-    private fun recycleAll() {
-        items.forEach { if (!it.isRecycled) it.recycle() }
+    /**
+     * Drop references to the rendered bitmaps and let the GC reclaim them.
+     * We must NOT recycle() them here: each was handed to the launcher via
+     * RemoteViews.setImageViewBitmap and may still be marshalling on another
+     * thread when the next refresh arrives — recycling mid-flight blanks the
+     * widget ("trying to use a recycled bitmap"). The item count is tiny
+     * (<=4 weeks / <=30 days), so leaving them to GC is cheap.
+     */
+    private fun releaseItems() {
         items = emptyList()
         itemDates = emptyList()
     }
