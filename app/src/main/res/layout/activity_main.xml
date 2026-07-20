@@ -165,13 +165,152 @@
                     android:orientation="vertical"
                     android:layout_marginTop="6dp" />
 
+                <!-- THEME -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Theme, opacity, text size and view mode live in the widget's gear icon."
+                    android:text="THEME"
                     android:textColor="#A8A29E"
-                    android:textSize="12sp"
-                    android:layout_marginTop="22dp" />
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="26dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp">
+
+                    <Button android:id="@+id/app_th_auto" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Auto" />
+                    <Button android:id="@+id/app_th_light" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Light" />
+                    <Button android:id="@+id/app_th_dark" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Dark" />
+                </LinearLayout>
+
+                <!-- OPACITY -->
+                <TextView
+                    android:id="@+id/app_opacity_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="WIDGET OPACITY — 100%"
+                    android:textColor="#A8A29E"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="24dp" />
+
+                <SeekBar
+                    android:id="@+id/app_opacity_seek"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:max="80"
+                    android:progress="80" />
+
+                <!-- TEXT SIZE -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TEXT SIZE"
+                    android:textColor="#A8A29E"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="24dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp">
+
+                    <Button android:id="@+id/app_tx_s" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Small" />
+                    <Button android:id="@+id/app_tx_m" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Medium" />
+                    <Button android:id="@+id/app_tx_l" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Large" />
+                </LinearLayout>
+
+                <!-- OPTIONS -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="OPTIONS"
+                    android:textColor="#A8A29E"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="24dp" />
+
+                <Switch
+                    android:id="@+id/app_sw_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Show widget header"
+                    android:textSize="15sp" />
+
+                <Switch
+                    android:id="@+id/app_sw_monday"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Start week on Monday"
+                    android:textSize="15sp" />
+
+                <Switch
+                    android:id="@+id/app_sw_strike"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Strike through finished days"
+                    android:textSize="15sp" />
+
+                <!-- WIDGET LAYOUT (applies to all placed widgets) -->
+                <TextView
+                    android:id="@+id/app_widget_hdr"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="WIDGET LAYOUT — ALL WIDGETS"
+                    android:textColor="#A8A29E"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="24dp" />
+
+                <LinearLayout
+                    android:id="@+id/app_widget_mode_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp">
+
+                    <Button android:id="@+id/app_md_weeks" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Weeks grid" />
+                    <Button android:id="@+id/app_md_agenda" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Agenda (30 days)" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/app_widget_weeks_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="6dp">
+
+                    <Button android:id="@+id/app_wk1" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="1" />
+                    <Button android:id="@+id/app_wk2" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="2" />
+                    <Button android:id="@+id/app_wk3" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="3" />
+                    <Button android:id="@+id/app_wk4" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="4" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/app_version_label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:gravity="center"
+                    android:text="Unbound"
+                    android:textColor="#A8A29E"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.04" />
 
                 <Button
                     android:id="@+id/btn_close_panel"

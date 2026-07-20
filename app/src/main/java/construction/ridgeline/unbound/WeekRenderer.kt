@@ -75,7 +75,9 @@ object WeekRenderer {
     private const val CARD_FILL_LIGHT = 0xFFFFFF
     private const val CARD_STROKE_LIGHT = 0xE6FFFFFF.toInt()  // rgba(255,255,255,.9)
 
-    private const val MAX_BYTES = 3_500_000
+    // Keep well under the RemoteViews/Binder-friendly size so the launcher never
+    // silently drops an oversized bitmap (a cause of blank widget rows).
+    private const val MAX_BYTES = 2_000_000
     private const val MAX_TITLE_LINES = 5
 
     private data class Seg(

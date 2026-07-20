@@ -211,7 +211,7 @@ object AgendaRenderer {
         return bmp
     }
 
-    private const val MAX_BYTES = 3_500_000
+    private const val MAX_BYTES = 2_000_000
 
     /** "9a" on the hour, "9:30" otherwise (compact, per the 2c mock). */
     private fun fmtTime(h: Int, m: Int): String {

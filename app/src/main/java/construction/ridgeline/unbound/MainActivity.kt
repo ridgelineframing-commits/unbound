@@ -30,6 +30,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.ScrollView
+import android.widget.SeekBar
+import android.widget.Switch
 import android.widget.TextView
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -87,6 +89,8 @@ class MainActivity : Activity() {
         }
         findViewById<TextView>(R.id.seg_weeks).setOnClickListener { setMode(0) }
         findViewById<TextView>(R.id.seg_agenda).setOnClickListener { setMode(1) }
+
+        setupPanelControls()
 
         // month label follows scrolling (weeks mode)
         listView.setOnScrollListener(object : AbsListView.OnScrollListener {
@@ -153,6 +157,7 @@ class MainActivity : Activity() {
         Thread {
             val evs = CalendarRepository.events(this, startMs, endMs, hidden)
             runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
                 events = evs
                 adapter.clearCache()
                 adapter.notifyDataSetChanged()
@@ -251,36 +256,156 @@ class MainActivity : Activity() {
             text = if (ok) "Calendar access granted" else "Grant calendar access"
             visibility = if (ok) View.GONE else View.VISIBLE
         }
+        stylePanelControls()
 
         val box = findViewById<LinearLayout>(R.id.cal_list)
         box.removeAllViews()
-        if (ok) {
-            val hidden = Prefs.hiddenCals(this)
-            val nowMs = System.currentTimeMillis()
-            val counts = CalendarRepository.instanceCounts(
-                this, nowMs, nowMs + 30L * 24 * 60 * 60 * 1000
-            )
-            for (c in CalendarRepository.calendars(this)) {
-                val cb = CheckBox(this)
-                val n = counts[c.id] ?: 0
-                val label = StringBuilder(c.name)
-                label.append("\n").append(n)
-                    .append(if (n == 1) " event" else " events")
-                    .append(" on device, next 30 days")
-                if (c.account.isNotEmpty() && !c.name.contains(c.account)) {
-                    label.append(" · ").append(c.account)
+        if (!ok) return
+
+        // The calendar scan (instanceCounts over 30 days + calendars) can be heavy
+        // on busy accounts — do it off the main thread, then build the rows on the UI.
+        val nowMs = System.currentTimeMillis()
+        Thread {
+            val counts = CalendarRepository.instanceCounts(this, nowMs, nowMs + 30L * 24 * 60 * 60 * 1000)
+            val cals = CalendarRepository.calendars(this)
+            runOnUiThread {
+                if (isFinishing || isDestroyed || !granted()) return@runOnUiThread
+                val hidden = Prefs.hiddenCals(this)
+                box.removeAllViews()
+                for (c in cals) {
+                    val cb = CheckBox(this)
+                    val n = counts[c.id] ?: 0
+                    val label = StringBuilder(c.name)
+                    label.append("\n").append(n)
+                        .append(if (n == 1) " event" else " events")
+                        .append(" on device, next 30 days")
+                    if (c.account.isNotEmpty() && !c.name.contains(c.account)) {
+                        label.append(" · ").append(c.account)
+                    }
+                    if (!c.syncOn) {
+                        label.append("\nSYNC OFF — Google Calendar app › this calendar › Sync")
+                    }
+                    cb.text = label.toString()
+                    cb.setTextColor(if (c.syncOn) pal.ink else pal.faint)
+                    cb.isChecked = !hidden.contains(c.id.toString())
+                    cb.tag = c.id.toString()
+                    cb.setOnCheckedChangeListener { _, _ -> saveCals(box) }
+                    box.addView(cb)
                 }
-                if (!c.syncOn) {
-                    label.append("\nSYNC OFF — Google Calendar app › this calendar › Sync")
+            }
+        }.start()
+    }
+
+    // ---- in-app settings panel (mirrors the widget's gear) -------------------
+
+    /** Attach listeners once and seed the stateful controls (switches / seekbar)
+     *  BEFORE the listeners are attached, so seeding doesn't fire them. */
+    private fun setupPanelControls() {
+        listOf(R.id.app_th_auto, R.id.app_th_light, R.id.app_th_dark)
+            .forEachIndexed { i, id ->
+                findViewById<Button>(id).setOnClickListener {
+                    Prefs.setTheme(this, i); onGlobalSettingChanged()
                 }
-                cb.text = label.toString()
-                cb.setTextColor(if (c.syncOn) pal.ink else pal.faint)
-                cb.isChecked = !hidden.contains(c.id.toString())
-                cb.tag = c.id.toString()
-                cb.setOnCheckedChangeListener { _, _ -> saveCals(box) }
-                box.addView(cb)
+            }
+        listOf(R.id.app_tx_s, R.id.app_tx_m, R.id.app_tx_l)
+            .forEachIndexed { i, id ->
+                findViewById<Button>(id).setOnClickListener {
+                    Prefs.setTextSize(this, i); onGlobalSettingChanged()
+                }
+            }
+        listOf(R.id.app_md_weeks, R.id.app_md_agenda)
+            .forEachIndexed { i, id ->
+                findViewById<Button>(id).setOnClickListener {
+                    setWidgetModeAll(i); stylePanelControls()
+                }
+            }
+        listOf(R.id.app_wk1, R.id.app_wk2, R.id.app_wk3, R.id.app_wk4)
+            .forEachIndexed { i, id ->
+                findViewById<Button>(id).setOnClickListener {
+                    setWidgetWeeksAll(i + 1); stylePanelControls()
+                }
+            }
+
+        val seek = findViewById<SeekBar>(R.id.app_opacity_seek)
+        seek.progress = Prefs.opacity(this) - 20
+        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                findViewById<TextView>(R.id.app_opacity_label).text =
+                    "WIDGET OPACITY — ${progress + 20}%"
+            }
+            override fun onStartTrackingTouch(sb: SeekBar?) {}
+            override fun onStopTrackingTouch(sb: SeekBar?) {
+                Prefs.setOpacity(this@MainActivity, (sb?.progress ?: 80) + 20)
+                onGlobalSettingChanged()
+            }
+        })
+
+        val header = findViewById<Switch>(R.id.app_sw_header)
+        header.isChecked = Prefs.showHeader(this)
+        header.setOnCheckedChangeListener { _, on -> Prefs.setShowHeader(this, on); onGlobalSettingChanged() }
+
+        val monday = findViewById<Switch>(R.id.app_sw_monday)
+        monday.isChecked = Prefs.weekStartsMonday(this)
+        monday.setOnCheckedChangeListener { _, on -> Prefs.setWeekStartsMonday(this, on); onGlobalSettingChanged() }
+
+        val strike = findViewById<Switch>(R.id.app_sw_strike)
+        strike.isChecked = Prefs.strikePast(this)
+        strike.setOnCheckedChangeListener { _, on -> Prefs.setStrikePast(this, on); onGlobalSettingChanged() }
+    }
+
+    /** Re-style the tap-to-select groups + labels for the current theme/values.
+     *  Never touches the switches/seekbar (that would re-fire their listeners). */
+    private fun stylePanelControls() {
+        fun styleGroup(ids: List<Int>, selected: Int) {
+            ids.forEachIndexed { i, id ->
+                val b = findViewById<Button>(id)
+                if (i == selected) {
+                    b.setBackgroundColor(pal.todayPill); b.setTextColor(pal.todayPillText)
+                } else {
+                    b.setBackgroundColor(if (pal.dark) 0x1FFFFFFF else 0x14000000)
+                    b.setTextColor(pal.stone)
+                }
             }
         }
+        styleGroup(listOf(R.id.app_th_auto, R.id.app_th_light, R.id.app_th_dark), Prefs.theme(this))
+        styleGroup(listOf(R.id.app_tx_s, R.id.app_tx_m, R.id.app_tx_l), Prefs.textSize(this))
+        styleGroup(listOf(R.id.app_md_weeks, R.id.app_md_agenda), currentWidgetMode())
+        styleGroup(listOf(R.id.app_wk1, R.id.app_wk2, R.id.app_wk3, R.id.app_wk4), currentWidgetWeeks() - 1)
+
+        findViewById<TextView>(R.id.app_opacity_label).text = "WIDGET OPACITY — ${Prefs.opacity(this)}%"
+        for (id in listOf(R.id.app_sw_header, R.id.app_sw_monday, R.id.app_sw_strike)) {
+            findViewById<Switch>(id).setTextColor(pal.ink)
+        }
+        findViewById<TextView>(R.id.app_widget_hdr).text =
+            if (widgetIds().isNotEmpty()) "WIDGET LAYOUT — ALL WIDGETS"
+            else "WIDGET LAYOUT — ADD A WIDGET TO USE"
+        findViewById<TextView>(R.id.app_version_label).text =
+            "Unbound ${BuildConfig.VERSION_NAME} · ${BuildConfig.BUILD_LABEL}"
+    }
+
+    private fun onGlobalSettingChanged() {
+        // Re-render the app view and push to every widget; the panel stays open.
+        refreshAll()
+    }
+
+    private fun widgetIds(): IntArray =
+        AppWidgetManager.getInstance(this)
+            .getAppWidgetIds(ComponentName(this, UnboundWidgetProvider::class.java))
+
+    private fun currentWidgetWeeks(): Int =
+        widgetIds().firstOrNull()?.let { Prefs.weeks(this, it) } ?: 2
+
+    private fun currentWidgetMode(): Int =
+        widgetIds().firstOrNull()?.let { Prefs.mode(this, it) } ?: 0
+
+    private fun setWidgetWeeksAll(w: Int) {
+        for (id in widgetIds()) Prefs.setWeeks(this, id, w)
+        pokeWidgets()
+    }
+
+    private fun setWidgetModeAll(m: Int) {
+        for (id in widgetIds()) Prefs.setMode(this, id, m)
+        pokeWidgets()
     }
 
     private fun saveCals(box: LinearLayout) {
