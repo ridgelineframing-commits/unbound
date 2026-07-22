@@ -77,7 +77,7 @@ class ConfigActivity : Activity() {
     // ---- sections ------------------------------------------------------------
 
     private fun setupMode() {
-        val btns = listOf(R.id.md_weeks, R.id.md_agenda).map { findViewById<Button>(it) }
+        val btns = listOf(R.id.md_weeks, R.id.md_agenda, R.id.md_month).map { findViewById<Button>(it) }
         style(btns, Prefs.mode(this, widgetId))
         btns.forEachIndexed { i, b ->
             b.setOnClickListener {
