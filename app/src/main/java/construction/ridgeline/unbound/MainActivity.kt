@@ -313,7 +313,7 @@ class MainActivity : Activity() {
                     Prefs.setTextSize(this, i); onGlobalSettingChanged()
                 }
             }
-        listOf(R.id.app_md_weeks, R.id.app_md_agenda)
+        listOf(R.id.app_md_weeks, R.id.app_md_agenda, R.id.app_md_month)
             .forEachIndexed { i, id ->
                 findViewById<Button>(id).setOnClickListener {
                     setWidgetModeAll(i); stylePanelControls()
@@ -369,7 +369,7 @@ class MainActivity : Activity() {
         }
         styleGroup(listOf(R.id.app_th_auto, R.id.app_th_light, R.id.app_th_dark), Prefs.theme(this))
         styleGroup(listOf(R.id.app_tx_s, R.id.app_tx_m, R.id.app_tx_l), Prefs.textSize(this))
-        styleGroup(listOf(R.id.app_md_weeks, R.id.app_md_agenda), currentWidgetMode())
+        styleGroup(listOf(R.id.app_md_weeks, R.id.app_md_agenda, R.id.app_md_month), currentWidgetMode())
         styleGroup(listOf(R.id.app_wk1, R.id.app_wk2, R.id.app_wk3, R.id.app_wk4), currentWidgetWeeks() - 1)
 
         findViewById<TextView>(R.id.app_opacity_label).text = "WIDGET OPACITY — ${Prefs.opacity(this)}%"

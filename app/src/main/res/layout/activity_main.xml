@@ -283,8 +283,9 @@
                     android:orientation="horizontal"
                     android:layout_marginTop="8dp">
 
-                    <Button android:id="@+id/app_md_weeks" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Weeks grid" />
-                    <Button android:id="@+id/app_md_agenda" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Agenda (30 days)" />
+                    <Button android:id="@+id/app_md_weeks" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Weeks" />
+                    <Button android:id="@+id/app_md_agenda" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Agenda" />
+                    <Button android:id="@+id/app_md_month" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Month" />
                 </LinearLayout>
 
                 <LinearLayout
