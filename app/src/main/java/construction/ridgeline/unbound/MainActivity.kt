@@ -8,11 +8,13 @@ import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.provider.CalendarContract
+import android.view.Gravity
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -34,9 +36,12 @@ import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.TextStyle
+import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import kotlin.math.abs
@@ -62,7 +67,15 @@ class MainActivity : Activity() {
     private var rangeStart: LocalDate = LocalDate.now()
     private var events: List<Ev> = emptyList()
     private var pal: WeekRenderer.Palette = WeekRenderer.LIGHT
-    private var viewMode = 0 // 0 = weeks, 1 = agenda (app-local)
+    private var viewMode = 0 // 0 = weeks, 1 = agenda, 2 = month (app-local)
+
+    // interactive month view state
+    private var displayedMonth: LocalDate = LocalDate.now().withDayOfMonth(1)
+    private var selectedDay: LocalDate = LocalDate.now()
+    private var monthEvents: List<Ev> = emptyList()
+    private val dayEvents = ArrayList<Ev>()
+    private lateinit var dayEventsAdapter: DayEventsAdapter
+    private val dayTimeFmt = java.text.SimpleDateFormat("h:mm a", Locale.getDefault())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +102,22 @@ class MainActivity : Activity() {
         }
         findViewById<TextView>(R.id.seg_weeks).setOnClickListener { setMode(0) }
         findViewById<TextView>(R.id.seg_agenda).setOnClickListener { setMode(1) }
+        findViewById<TextView>(R.id.seg_month).setOnClickListener { setMode(2) }
+
+        findViewById<ImageButton>(R.id.btn_search).setOnClickListener {
+            startActivity(Intent(this, SearchActivity::class.java))
+        }
+
+        dayEventsAdapter = DayEventsAdapter()
+        findViewById<ListView>(R.id.day_events).adapter = dayEventsAdapter
+        findViewById<ListView>(R.id.day_events).setOnItemClickListener { _, _, pos, _ ->
+            openEditor(dayEvents[pos].id, null)
+        }
+        findViewById<Button>(R.id.btn_month_prev).setOnClickListener { stepMonth(-1) }
+        findViewById<Button>(R.id.btn_month_next).setOnClickListener { stepMonth(1) }
+        findViewById<Button>(R.id.add_event_btn).setOnClickListener {
+            openEditor(-1L, selectedDay)
+        }
 
         setupPanelControls()
 
@@ -121,9 +150,21 @@ class MainActivity : Activity() {
         if (viewMode == m) return
         viewMode = m
         styleSegments()
-        adapter.clearCache()
-        adapter.notifyDataSetChanged()
-        listView.setSelection(if (m == 0) WEEKS_BACK else 0)
+        applyViewModeVisibility()
+        if (m == 2) {
+            selectedDay = LocalDate.now()
+            displayedMonth = selectedDay.withDayOfMonth(1)
+            showMonth()
+        } else {
+            adapter.clearCache()
+            adapter.notifyDataSetChanged()
+            listView.setSelection(if (m == 0) WEEKS_BACK else 0)
+        }
+    }
+
+    private fun applyViewModeVisibility() {
+        listView.visibility = if (viewMode == 2) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.month_container).visibility = if (viewMode == 2) View.VISIBLE else View.GONE
     }
 
     // ---------------------------------------------------------------------
@@ -133,6 +174,7 @@ class MainActivity : Activity() {
     private fun refreshAll() {
         pal = if (Prefs.resolveDark(this)) WeekRenderer.DARK else WeekRenderer.LIGHT
         applyChrome()
+        applyViewModeVisibility()
 
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
@@ -166,7 +208,250 @@ class MainActivity : Activity() {
                 }
             }
         }.start()
+        if (viewMode == 2) showMonth()
         pokeWidgets()
+    }
+
+    // ---------------------------------------------------------------------
+    // interactive month view
+    // ---------------------------------------------------------------------
+
+    private fun dpi(v: Float) = (v * resources.displayMetrics.density).toInt()
+
+    private fun stepMonth(delta: Int) {
+        displayedMonth = displayedMonth.plusMonths(delta.toLong())
+        val today = LocalDate.now()
+        selectedDay = if (today.year == displayedMonth.year && today.month == displayedMonth.month)
+            today else displayedMonth
+        showMonth()
+    }
+
+    /** Load the events for the displayed month's grid, then (re)build it. */
+    private fun showMonth() {
+        val firstDow = if (Prefs.weekStartsMonday(this)) DayOfWeek.MONDAY else DayOfWeek.SUNDAY
+        val gridStart = displayedMonth.with(TemporalAdjusters.previousOrSame(firstDow))
+        val monthEnd = displayedMonth.withDayOfMonth(displayedMonth.lengthOfMonth())
+        val gridEnd = monthEnd.with(TemporalAdjusters.nextOrSame(firstDow.plus(6L)))
+        val zone = ZoneId.systemDefault()
+        val startMs = gridStart.atStartOfDay(zone).toInstant().toEpochMilli()
+        val endMs = gridEnd.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val hidden = Prefs.hiddenCals(this)
+        val ok = granted()
+        Thread {
+            val evs = if (ok) CalendarRepository.events(this, startMs, endMs, hidden) else emptyList()
+            runOnUiThread {
+                if (isFinishing || isDestroyed || viewMode != 2) return@runOnUiThread
+                monthEvents = evs
+                if (selectedDay.year != displayedMonth.year || selectedDay.month != displayedMonth.month) {
+                    val today = LocalDate.now()
+                    selectedDay = if (today.month == displayedMonth.month && today.year == displayedMonth.year)
+                        today else displayedMonth
+                }
+                buildMonthGrid(firstDow, gridStart, gridEnd)
+                updateSelectedDayUi()
+            }
+        }.start()
+    }
+
+    private fun selectDay(date: LocalDate) {
+        if (date.month != displayedMonth.month || date.year != displayedMonth.year) {
+            displayedMonth = date.withDayOfMonth(1)
+            selectedDay = date
+            showMonth()
+            return
+        }
+        selectedDay = date
+        val firstDow = if (Prefs.weekStartsMonday(this)) DayOfWeek.MONDAY else DayOfWeek.SUNDAY
+        val gridStart = displayedMonth.with(TemporalAdjusters.previousOrSame(firstDow))
+        val monthEnd = displayedMonth.withDayOfMonth(displayedMonth.lengthOfMonth())
+        val gridEnd = monthEnd.with(TemporalAdjusters.nextOrSame(firstDow.plus(6L)))
+        buildMonthGrid(firstDow, gridStart, gridEnd)
+        updateSelectedDayUi()
+    }
+
+    private fun eventColorsByDate(gridStart: LocalDate, gridEnd: LocalDate): Map<LocalDate, List<Int>> {
+        val zone = ZoneId.systemDefault()
+        val out = HashMap<LocalDate, ArrayList<Int>>()
+        fun add(d: LocalDate, c: Int) {
+            if (d.isBefore(gridStart) || d.isAfter(gridEnd)) return
+            val l = out.getOrPut(d) { ArrayList() }
+            if (l.size < 3 && !l.contains(c)) l.add(c)
+        }
+        for (ev in monthEvents) {
+            val c = if (ev.color == 0) pal.defaultEv else ev.color
+            if (ev.allDay) {
+                val s = Instant.ofEpochMilli(ev.begin).atZone(ZoneOffset.UTC).toLocalDate()
+                val last = Instant.ofEpochMilli(ev.end).atZone(ZoneOffset.UTC).toLocalDate().minusDays(1)
+                var d = if (s.isBefore(gridStart)) gridStart else s
+                val end = if (last.isAfter(gridEnd)) gridEnd else last
+                while (!d.isAfter(end)) { add(d, c); d = d.plusDays(1) }
+            } else {
+                add(Instant.ofEpochMilli(ev.begin).atZone(zone).toLocalDate(), c)
+            }
+        }
+        return out
+    }
+
+    private fun buildMonthGrid(firstDow: DayOfWeek, gridStart: LocalDate, gridEnd: LocalDate) {
+        val today = LocalDate.now()
+        findViewById<TextView>(R.id.month_nav_label).apply {
+            text = "${displayedMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${displayedMonth.year}"
+            setTextColor(pal.ink)
+        }
+        findViewById<Button>(R.id.btn_month_prev).setTextColor(pal.stone)
+        findViewById<Button>(R.id.btn_month_next).setTextColor(pal.stone)
+
+        val dowIds = intArrayOf(R.id.mdow0, R.id.mdow1, R.id.mdow2, R.id.mdow3, R.id.mdow4, R.id.mdow5, R.id.mdow6)
+        for (i in 0..6) {
+            findViewById<TextView>(dowIds[i]).apply {
+                text = firstDow.plus(i.toLong()).getDisplayName(TextStyle.NARROW, Locale.getDefault())
+                    .uppercase(Locale.getDefault())
+                setTextColor(pal.faint)
+            }
+        }
+
+        val colors = eventColorsByDate(gridStart, gridEnd)
+        val grid = findViewById<LinearLayout>(R.id.month_grid)
+        grid.removeAllViews()
+        val rows = ((ChronoUnit.DAYS.between(gridStart, gridEnd) + 1) / 7).toInt()
+        var idx = 0
+        for (r in 0 until rows) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpi(52f))
+            }
+            for (c in 0..6) {
+                row.addView(makeCell(gridStart.plusDays(idx.toLong()), today, colors))
+                idx++
+            }
+            grid.addView(row)
+        }
+    }
+
+    private fun makeCell(date: LocalDate, today: LocalDate, colors: Map<LocalDate, List<Int>>): View {
+        val inMonth = date.month == displayedMonth.month && date.year == displayedMonth.year
+        val isToday = date == today
+        val isSel = date == selectedDay
+        val isPast = date.isBefore(today)
+
+        val cell = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT).also { it.weight = 1f }
+            setPadding(0, dpi(5f), 0, 0)
+            isClickable = true
+            if (isSel && !isToday) {
+                background = GradientDrawable().apply {
+                    cornerRadius = dpi(10f).toFloat()
+                    setColor((0x33 shl 24) or (pal.todayPill and 0x00FFFFFF))
+                }
+            }
+            setOnClickListener { selectDay(date) }
+        }
+
+        val d = dpi(26f)
+        val num = TextView(this).apply {
+            text = date.dayOfMonth.toString()
+            textSize = 13f
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(d, d)
+            if (isToday) {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(pal.todayPill) }
+                setTextColor(pal.todayPillText)
+            } else {
+                setTextColor(when { !inMonth -> pal.faint; isPast -> pal.pastText; else -> pal.ink })
+                if (isPast && inMonth && Prefs.strikePast(this@MainActivity)) {
+                    paintFlags = paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+                }
+            }
+        }
+        cell.addView(num)
+
+        val dots = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).also { it.topMargin = dpi(3f) }
+        }
+        if (inMonth) colors[date]?.forEach { col ->
+            dots.addView(View(this).apply {
+                val sz = dpi(5f)
+                layoutParams = LinearLayout.LayoutParams(sz, sz).also { it.marginStart = dpi(1.5f); it.marginEnd = dpi(1.5f) }
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(if (isPast) (0x99 shl 24) or (col and 0x00FFFFFF) else col)
+                }
+            })
+        }
+        cell.addView(dots)
+        return cell
+    }
+
+    private fun updateSelectedDayUi() {
+        findViewById<TextView>(R.id.sel_day_label).apply {
+            text = selectedDay.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault()))
+            setTextColor(pal.ink)
+        }
+        dayEvents.clear()
+        dayEvents.addAll(eventsOnDate(selectedDay))
+        dayEventsAdapter.notifyDataSetChanged()
+    }
+
+    private fun eventsOnDate(date: LocalDate): List<Ev> {
+        val zone = ZoneId.systemDefault()
+        return monthEvents.filter { ev ->
+            if (ev.allDay) {
+                val s = Instant.ofEpochMilli(ev.begin).atZone(ZoneOffset.UTC).toLocalDate()
+                val last = Instant.ofEpochMilli(ev.end).atZone(ZoneOffset.UTC).toLocalDate().minusDays(1)
+                !date.isBefore(s) && !date.isAfter(last)
+            } else {
+                Instant.ofEpochMilli(ev.begin).atZone(zone).toLocalDate() == date
+            }
+        }.sortedBy { it.begin }
+    }
+
+    private fun openEditor(eventId: Long, day: LocalDate?) {
+        val i = Intent(this, EventEditActivity::class.java)
+        if (eventId != -1L) i.putExtra(EventEditActivity.EXTRA_EVENT_ID, eventId)
+        if (day != null) i.putExtra(
+            EventEditActivity.EXTRA_DAY_MS,
+            day.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        )
+        startActivity(i)
+    }
+
+    private inner class DayEventsAdapter : BaseAdapter() {
+        override fun getCount() = dayEvents.size
+        override fun getItem(p: Int) = dayEvents[p]
+        override fun getItemId(p: Int) = dayEvents[p].id
+        override fun getView(pos: Int, cv: View?, parent: ViewGroup): View {
+            val ev = dayEvents[pos]
+            val row = (cv as? LinearLayout) ?: LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(dpi(4f), dpi(10f), dpi(4f), dpi(10f))
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            row.removeAllViews()
+            val bar = View(this@MainActivity).apply {
+                layoutParams = LinearLayout.LayoutParams(dpi(4f), dpi(34f)).also { it.marginEnd = dpi(10f) }
+                background = GradientDrawable().apply {
+                    cornerRadius = dpi(2f).toFloat()
+                    setColor(if (ev.color == 0) pal.defaultEv else ev.color)
+                }
+            }
+            val texts = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
+            texts.addView(TextView(this@MainActivity).apply {
+                text = if (ev.title.isBlank()) "(no title)" else ev.title
+                setTextColor(pal.ink); textSize = 15f
+            })
+            texts.addView(TextView(this@MainActivity).apply {
+                text = if (ev.allDay) "All day" else dayTimeFmt.format(ev.begin)
+                setTextColor(pal.stone); textSize = 12f
+            })
+            row.addView(bar); row.addView(texts)
+            return row
+        }
     }
 
     /** Float bg: base ink + soft ambient radial glows (app screens only). */
@@ -217,6 +502,7 @@ class MainActivity : Activity() {
         box.background = pill(if (pal.dark) 0x12FFFFFF else 0x11000000, 12f)
         val weeks = findViewById<TextView>(R.id.seg_weeks)
         val agenda = findViewById<TextView>(R.id.seg_agenda)
+        val month = findViewById<TextView>(R.id.seg_month)
         fun style(tv: TextView, on: Boolean) {
             if (on) {
                 tv.background = pill(pal.todayPill, 10f)
@@ -230,6 +516,7 @@ class MainActivity : Activity() {
         }
         style(weeks, viewMode == 0)
         style(agenda, viewMode == 1)
+        style(month, viewMode == 2)
     }
 
     private fun applyChrome() {
@@ -241,6 +528,8 @@ class MainActivity : Activity() {
         todayBtn.setTextColor(pal.stone)
         todayBtn.background = pill(if (pal.dark) 0x12FFFFFF else 0x11000000, 12f)
         findViewById<ImageButton>(R.id.btn_app_settings)
+            .setColorFilter((0x80 shl 24) or (pal.ink and 0x00FFFFFF))
+        findViewById<ImageButton>(R.id.btn_search)
             .setColorFilter((0x80 shl 24) or (pal.ink and 0x00FFFFFF))
         panel.setBackgroundColor(if (pal.dark) 0xF2161A22.toInt() else 0xF2F6F7FA.toInt())
         findViewById<TextView>(R.id.status).setTextColor(pal.stone)

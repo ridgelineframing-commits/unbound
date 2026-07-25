@@ -43,8 +43,8 @@
                 android:id="@+id/seg_weeks"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
                 android:paddingTop="5dp"
                 android:paddingBottom="5dp"
                 android:text="Weeks"
@@ -55,11 +55,23 @@
                 android:id="@+id/seg_agenda"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
                 android:paddingTop="5dp"
                 android:paddingBottom="5dp"
                 android:text="Agenda"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-medium" />
+
+            <TextView
+                android:id="@+id/seg_month"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:text="Month"
                 android:textSize="12sp"
                 android:fontFamily="sans-serif-medium" />
         </LinearLayout>
@@ -75,6 +87,15 @@
             android:text="Today"
             android:textSize="12sp"
             android:background="@android:color/transparent" />
+
+        <ImageButton
+            android:id="@+id/btn_search"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="9dp"
+            android:src="@android:drawable/ic_menu_search"
+            android:background="@android:color/transparent"
+            android:contentDescription="Search" />
 
         <ImageButton
             android:id="@+id/btn_app_settings"
@@ -115,6 +136,71 @@
             android:divider="@null"
             android:dividerHeight="0dp"
             android:scrollbars="none" />
+
+        <!-- interactive month view -->
+        <LinearLayout
+            android:id="@+id/month_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:padding="10dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <Button android:id="@+id/btn_month_prev" android:layout_width="48dp" android:layout_height="40dp" android:minWidth="0dp" android:text="‹" android:textSize="22sp" android:background="@android:color/transparent" />
+                <TextView android:id="@+id/month_nav_label" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:text="Month" android:textSize="17sp" android:fontFamily="sans-serif-medium" />
+                <Button android:id="@+id/btn_month_next" android:layout_width="48dp" android:layout_height="40dp" android:minWidth="0dp" android:text="›" android:textSize="22sp" android:background="@android:color/transparent" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/month_dow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="2dp">
+
+                <TextView android:id="@+id/mdow0" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="10sp" android:fontFamily="sans-serif-medium" />
+                <TextView android:id="@+id/mdow1" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="10sp" android:fontFamily="sans-serif-medium" />
+                <TextView android:id="@+id/mdow2" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="10sp" android:fontFamily="sans-serif-medium" />
+                <TextView android:id="@+id/mdow3" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="10sp" android:fontFamily="sans-serif-medium" />
+                <TextView android:id="@+id/mdow4" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="10sp" android:fontFamily="sans-serif-medium" />
+                <TextView android:id="@+id/mdow5" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="10sp" android:fontFamily="sans-serif-medium" />
+                <TextView android:id="@+id/mdow6" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="10sp" android:fontFamily="sans-serif-medium" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/month_grid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="4dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="10dp">
+
+                <TextView android:id="@+id/sel_day_label" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="" android:textSize="14sp" android:fontFamily="sans-serif-medium" />
+                <Button android:id="@+id/add_event_btn" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minWidth="0dp" android:paddingStart="16dp" android:paddingEnd="16dp" android:text="+ Add" android:textColor="#101318" android:backgroundTint="#8FE3C0" />
+            </LinearLayout>
+
+            <ListView
+                android:id="@+id/day_events"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:divider="@null"
+                android:dividerHeight="0dp"
+                android:layout_marginTop="6dp"
+                android:scrollbars="none" />
+        </LinearLayout>
 
         <!-- onboarding / settings panel -->
         <ScrollView
