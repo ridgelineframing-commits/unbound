@@ -31,6 +31,7 @@ class EventEditActivity : Activity() {
     companion object {
         const val EXTRA_EVENT_ID = "event_id"
         const val EXTRA_DAY_MS = "day_ms"
+        const val EXTRA_END_DAY_MS = "end_day_ms"
         private const val REQ = 71
         private const val DAY_MS = 24L * 60 * 60 * 1000
     }
@@ -39,6 +40,14 @@ class EventEditActivity : Activity() {
     private val endCal = Calendar.getInstance()
     private var eventId = -1L
     private var cals: List<CalInfo> = emptyList()
+
+    private val repeatRules = arrayOf<String?>(null, "FREQ=DAILY", "FREQ=WEEKLY", "FREQ=MONTHLY", "FREQ=YEARLY")
+    private val repeatLabels = listOf("Does not repeat", "Every day", "Every week", "Every month", "Every year")
+    private val reminderMins = intArrayOf(-1, 0, 5, 10, 15, 30, 60, 1440)
+    private val reminderLabels = listOf(
+        "None", "At time of event", "5 minutes before", "10 minutes before",
+        "15 minutes before", "30 minutes before", "1 hour before", "1 day before"
+    )
 
     private val dateFmt = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault())
     private val timeFmt = SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -68,15 +77,9 @@ class EventEditActivity : Activity() {
         cals = CalendarRepository.writableCalendars(this)
         if (cals.isEmpty()) { toast("No calendar you can add events to"); finish(); return }
 
-        val spinner = findViewById<Spinner>(R.id.ev_calendar)
-        val adapter = object : ArrayAdapter<String>(
-            this, android.R.layout.simple_spinner_item, cals.map { it.name }
-        ) {
-            override fun getView(pos: Int, cv: View?, parent: ViewGroup): View =
-                (super.getView(pos, cv, parent) as TextView).apply { setTextColor(0xFFF4F5F7.toInt()) }
-        }
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinner.adapter = adapter
+        val spinner = whiteSpinner(R.id.ev_calendar, cals.map { it.name })
+        val repeat = whiteSpinner(R.id.ev_repeat, repeatLabels)
+        val reminder = whiteSpinner(R.id.ev_reminder, reminderLabels)
 
         val allday = findViewById<Switch>(R.id.ev_allday)
 
@@ -98,16 +101,28 @@ class EventEditActivity : Activity() {
             }
             val idx = cals.indexOfFirst { it.id == detail.calId }
             if (idx >= 0) spinner.setSelection(idx)
+            val ri = repeatRules.indexOfFirst { it != null && detail.rrule.contains(it) }
+            repeat.setSelection(if (ri >= 0) ri else 0)
+            val mi = reminderMins.indexOf(detail.reminderMinutes)
+            reminder.setSelection(if (mi >= 0) mi else 0)
             findViewById<Button>(R.id.ev_delete).apply {
                 visibility = View.VISIBLE
                 setOnClickListener { confirmDelete() }
             }
         } else {
             val dayMs = intent?.getLongExtra(EXTRA_DAY_MS, System.currentTimeMillis()) ?: System.currentTimeMillis()
-            startCal.timeInMillis = dayMs
-            startCal.set(Calendar.HOUR_OF_DAY, 9); startCal.set(Calendar.MINUTE, 0)
-            startCal.set(Calendar.SECOND, 0); startCal.set(Calendar.MILLISECOND, 0)
-            endCal.timeInMillis = startCal.timeInMillis + 60L * 60 * 1000
+            val endDayMs = intent?.getLongExtra(EXTRA_END_DAY_MS, -1L) ?: -1L
+            if (endDayMs > 0 && endDayMs != dayMs) {
+                // dragged across days in the month view -> all-day event spanning the range
+                allday.isChecked = true
+                startCal.timeInMillis = minOf(dayMs, endDayMs)
+                endCal.timeInMillis = maxOf(dayMs, endDayMs)
+            } else {
+                startCal.timeInMillis = dayMs
+                startCal.set(Calendar.HOUR_OF_DAY, 9); startCal.set(Calendar.MINUTE, 0)
+                startCal.set(Calendar.SECOND, 0); startCal.set(Calendar.MILLISECOND, 0)
+                endCal.timeInMillis = startCal.timeInMillis + 60L * 60 * 1000
+            }
         }
 
         allday.setOnCheckedChangeListener { _, on -> applyAllDay(on) }
@@ -163,6 +178,8 @@ class EventEditActivity : Activity() {
         val calId = cals[findViewById<Spinner>(R.id.ev_calendar).selectedItemPosition].id
         val location = findViewById<EditText>(R.id.ev_location).text.toString()
         val notes = findViewById<EditText>(R.id.ev_notes).text.toString()
+        val rrule = repeatRules[findViewById<Spinner>(R.id.ev_repeat).selectedItemPosition]
+        val reminder = reminderMins[findViewById<Spinner>(R.id.ev_reminder).selectedItemPosition]
 
         val begin: Long
         val end: Long
@@ -176,9 +193,9 @@ class EventEditActivity : Activity() {
         }
 
         val ok = if (eventId == -1L)
-            CalendarRepository.insertEvent(this, calId, title, begin, end, allDay, location, notes) != null
+            CalendarRepository.insertEvent(this, calId, title, begin, end, allDay, location, notes, rrule, reminder) != null
         else
-            CalendarRepository.updateEvent(this, eventId, calId, title, begin, end, allDay, location, notes)
+            CalendarRepository.updateEvent(this, eventId, calId, title, begin, end, allDay, location, notes, rrule, reminder)
 
         if (ok) {
             UnboundWidgetProvider.updateAll(this)
@@ -209,6 +226,17 @@ class EventEditActivity : Activity() {
         u.clear()
         u.set(local.get(Calendar.YEAR), local.get(Calendar.MONTH), local.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
         return u.timeInMillis
+    }
+
+    private fun whiteSpinner(id: Int, labels: List<String>): Spinner {
+        val sp = findViewById<Spinner>(id)
+        val a = object : ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, labels) {
+            override fun getView(pos: Int, cv: View?, parent: ViewGroup): View =
+                (super.getView(pos, cv, parent) as TextView).apply { setTextColor(0xFFF4F5F7.toInt()) }
+        }
+        a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        sp.adapter = a
+        return sp
     }
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()
