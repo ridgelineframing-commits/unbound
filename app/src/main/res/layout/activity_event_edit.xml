@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#14181F"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/ev_header"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="New event"
+            android:textColor="#F4F5F7"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp" />
+
+        <EditText
+            android:id="@+id/ev_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Title"
+            android:textColor="#F4F5F7"
+            android:textColorHint="#7C828E"
+            android:textSize="18sp"
+            android:inputType="textCapSentences"
+            android:layout_marginTop="18dp" />
+
+        <Switch
+            android:id="@+id/ev_allday"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="All-day"
+            android:textColor="#F4F5F7"
+            android:textSize="15sp"
+            android:layout_marginTop="14dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="STARTS"
+            android:textColor="#7C828E"
+            android:textSize="10sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.12"
+            android:layout_marginTop="18dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp">
+
+            <Button android:id="@+id/ev_start_date" android:layout_width="0dp" android:layout_weight="1.4" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Date" android:textColor="#F4F5F7" android:backgroundTint="#232833" />
+            <Button android:id="@+id/ev_start_time" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Time" android:textColor="#F4F5F7" android:backgroundTint="#232833" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ENDS"
+            android:textColor="#7C828E"
+            android:textSize="10sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.12"
+            android:layout_marginTop="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp">
+
+            <Button android:id="@+id/ev_end_date" android:layout_width="0dp" android:layout_weight="1.4" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:text="Date" android:textColor="#F4F5F7" android:backgroundTint="#232833" />
+            <Button android:id="@+id/ev_end_time" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Time" android:textColor="#F4F5F7" android:backgroundTint="#232833" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CALENDAR"
+            android:textColor="#7C828E"
+            android:textSize="10sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.12"
+            android:layout_marginTop="18dp" />
+
+        <Spinner
+            android:id="@+id/ev_calendar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:backgroundTint="#7C828E" />
+
+        <EditText
+            android:id="@+id/ev_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Location"
+            android:textColor="#F4F5F7"
+            android:textColorHint="#7C828E"
+            android:textSize="15sp"
+            android:inputType="textCapSentences"
+            android:layout_marginTop="18dp" />
+
+        <EditText
+            android:id="@+id/ev_notes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Notes"
+            android:textColor="#F4F5F7"
+            android:textColorHint="#7C828E"
+            android:textSize="15sp"
+            android:inputType="textCapSentences|textMultiLine"
+            android:minLines="2"
+            android:gravity="top"
+            android:layout_marginTop="10dp" />
+
+        <Button
+            android:id="@+id/ev_save"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="26dp"
+            android:text="Save"
+            android:textStyle="bold"
+            android:textColor="#101318"
+            android:backgroundTint="#8FE3C0" />
+
+        <Button
+            android:id="@+id/ev_delete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp"
+            android:text="Delete"
+            android:textColor="#F1A5A5"
+            android:background="@android:color/transparent"
+            android:visibility="gone" />
+    </LinearLayout>
+</ScrollView>
