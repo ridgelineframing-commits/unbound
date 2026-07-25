@@ -73,6 +73,9 @@ class MainActivity : Activity() {
     private var displayedMonth: LocalDate = LocalDate.now().withDayOfMonth(1)
     private var selectedDay: LocalDate = LocalDate.now()
     private var monthEvents: List<Ev> = emptyList()
+    private var gridStartField: LocalDate = LocalDate.now()
+    private var gridRows = 0
+    private var dragStartDate: LocalDate? = null
     private val dayEvents = ArrayList<Ev>()
     private lateinit var dayEventsAdapter: DayEventsAdapter
     private val dayTimeFmt = java.text.SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -117,6 +120,34 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.btn_month_next).setOnClickListener { stepMonth(1) }
         findViewById<Button>(R.id.add_event_btn).setOnClickListener {
             openEditor(-1L, selectedDay)
+        }
+
+        // Tap a day to select it; drag across days to create an all-day event.
+        findViewById<LinearLayout>(R.id.month_grid).setOnTouchListener { v, e ->
+            val w = v.width
+            if (w == 0 || gridRows == 0) return@setOnTouchListener false
+            val rowH = dpi(52f)
+            fun dateAt(x: Float, y: Float): LocalDate {
+                val col = (x / (w / 7f)).toInt().coerceIn(0, 6)
+                val row = (y / rowH).toInt().coerceIn(0, gridRows - 1)
+                return gridStartField.plusDays((row * 7 + col).toLong())
+            }
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> { dragStartDate = dateAt(e.x, e.y); true }
+                MotionEvent.ACTION_UP -> {
+                    val start = dragStartDate
+                    dragStartDate = null
+                    if (start != null) {
+                        val end = dateAt(e.x, e.y)
+                        if (start == end) selectDay(start)
+                        else openRangeEditor(minOf(start, end), maxOf(start, end))
+                    }
+                    v.performClick()
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> { dragStartDate = null; true }
+                else -> true
+            }
         }
 
         setupPanelControls()
@@ -314,6 +345,8 @@ class MainActivity : Activity() {
         val grid = findViewById<LinearLayout>(R.id.month_grid)
         grid.removeAllViews()
         val rows = ((ChronoUnit.DAYS.between(gridStart, gridEnd) + 1) / 7).toInt()
+        gridStartField = gridStart
+        gridRows = rows
         var idx = 0
         for (r in 0 until rows) {
             val row = LinearLayout(this).apply {
@@ -339,14 +372,14 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT).also { it.weight = 1f }
             setPadding(0, dpi(5f), 0, 0)
-            isClickable = true
+            // taps + drags are handled on the grid container (see onCreate) so a
+            // drag can span cells; individual cells don't take clicks.
             if (isSel && !isToday) {
                 background = GradientDrawable().apply {
                     cornerRadius = dpi(10f).toFloat()
                     setColor((0x33 shl 24) or (pal.todayPill and 0x00FFFFFF))
                 }
             }
-            setOnClickListener { selectDay(date) }
         }
 
         val d = dpi(26f)
@@ -419,6 +452,15 @@ class MainActivity : Activity() {
             day.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         )
         startActivity(i)
+    }
+
+    private fun openRangeEditor(start: LocalDate, end: LocalDate) {
+        val zone = ZoneId.systemDefault()
+        startActivity(
+            Intent(this, EventEditActivity::class.java)
+                .putExtra(EventEditActivity.EXTRA_DAY_MS, start.atStartOfDay(zone).toInstant().toEpochMilli())
+                .putExtra(EventEditActivity.EXTRA_END_DAY_MS, end.atStartOfDay(zone).toInstant().toEpochMilli())
+        )
     }
 
     private inner class DayEventsAdapter : BaseAdapter() {

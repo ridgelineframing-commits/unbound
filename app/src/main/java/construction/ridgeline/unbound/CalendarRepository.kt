@@ -33,7 +33,9 @@ data class EventDetail(
     val allDay: Boolean,
     val location: String,
     val description: String,
-    val color: Int
+    val color: Int,
+    val rrule: String,
+    val reminderMinutes: Int // -1 = none
 )
 
 object CalendarRepository {
@@ -205,7 +207,9 @@ object CalendarRepository {
             CalendarContract.Events.ALL_DAY,
             CalendarContract.Events.EVENT_LOCATION,
             CalendarContract.Events.DESCRIPTION,
-            CalendarContract.Events.DISPLAY_COLOR
+            CalendarContract.Events.DISPLAY_COLOR,
+            CalendarContract.Events.RRULE,
+            CalendarContract.Events.DURATION
         )
         try {
             c.contentResolver.query(
@@ -213,16 +217,25 @@ object CalendarRepository {
                 proj, null, null, null
             )?.use { cur ->
                 if (cur.moveToFirst()) {
+                    val allDay = cur.getInt(5) == 1
+                    // Recurring events store DTSTART + DURATION (no DTEND); derive an end.
+                    val begin = cur.getLong(3)
+                    val end = when {
+                        !cur.isNull(4) -> cur.getLong(4)
+                        else -> begin + durationToMs(cur.getString(10), allDay)
+                    }
                     return EventDetail(
                         id = cur.getLong(0),
                         calId = cur.getLong(1),
                         title = cur.getString(2) ?: "",
-                        begin = cur.getLong(3),
-                        end = if (cur.isNull(4)) cur.getLong(3) else cur.getLong(4),
-                        allDay = cur.getInt(5) == 1,
+                        begin = begin,
+                        end = end,
+                        allDay = allDay,
                         location = cur.getString(6) ?: "",
                         description = cur.getString(7) ?: "",
-                        color = cur.getInt(8)
+                        color = cur.getInt(8),
+                        rrule = cur.getString(9) ?: "",
+                        reminderMinutes = reminderMinutes(c, eventId)
                     )
                 }
             }
@@ -231,44 +244,105 @@ object CalendarRepository {
         return null
     }
 
+    /** Minutes-before of the first reminder on an event, or -1 if none. */
+    fun reminderMinutes(c: Context, eventId: Long): Int {
+        try {
+            c.contentResolver.query(
+                CalendarContract.Reminders.CONTENT_URI,
+                arrayOf(CalendarContract.Reminders.MINUTES),
+                "${CalendarContract.Reminders.EVENT_ID} = ?", arrayOf(eventId.toString()), null
+            )?.use { cur -> if (cur.moveToFirst()) return cur.getInt(0) }
+        } catch (_: Exception) {
+        }
+        return -1
+    }
+
+    /** Parse an RFC5545 DURATION like "PT3600S" / "P1D" to milliseconds. */
+    private fun durationToMs(dur: String?, allDay: Boolean): Long {
+        if (dur.isNullOrEmpty()) return if (allDay) 86_400_000L else 3_600_000L
+        return try {
+            val days = Regex("P(\\d+)D").find(dur)?.groupValues?.get(1)?.toLong() ?: 0L
+            val secs = Regex("T(\\d+)S").find(dur)?.groupValues?.get(1)?.toLong() ?: 0L
+            val ms = days * 86_400_000L + secs * 1000L
+            if (ms > 0) ms else if (allDay) 86_400_000L else 3_600_000L
+        } catch (_: Exception) {
+            if (allDay) 86_400_000L else 3_600_000L
+        }
+    }
+
     private fun eventValues(
         calId: Long, title: String, begin: Long, end: Long,
-        allDay: Boolean, location: String?, desc: String?
+        allDay: Boolean, location: String?, desc: String?, rrule: String?, hasReminder: Boolean
     ) = ContentValues().apply {
         put(CalendarContract.Events.CALENDAR_ID, calId)
         put(CalendarContract.Events.TITLE, title)
         put(CalendarContract.Events.DTSTART, begin)
-        put(CalendarContract.Events.DTEND, end)
         put(CalendarContract.Events.ALL_DAY, if (allDay) 1 else 0)
         // All-day events are stored against UTC midnight per CalendarContract.
-        val tz = if (allDay) "UTC" else TimeZone.getDefault().id
-        put(CalendarContract.Events.EVENT_TIMEZONE, tz)
+        put(CalendarContract.Events.EVENT_TIMEZONE, if (allDay) "UTC" else TimeZone.getDefault().id)
         put(CalendarContract.Events.EVENT_LOCATION, location ?: "")
         put(CalendarContract.Events.DESCRIPTION, desc ?: "")
+        put(CalendarContract.Events.HAS_ALARM, if (hasReminder) 1 else 0)
+        if (rrule.isNullOrEmpty()) {
+            put(CalendarContract.Events.DTEND, end)
+            putNull(CalendarContract.Events.RRULE)
+            putNull(CalendarContract.Events.DURATION)
+        } else {
+            // A recurring event must carry DTSTART + DURATION, never DTEND.
+            putNull(CalendarContract.Events.DTEND)
+            put(CalendarContract.Events.RRULE, rrule)
+            val ms = (end - begin).coerceAtLeast(if (allDay) 86_400_000L else 300_000L)
+            put(
+                CalendarContract.Events.DURATION,
+                if (allDay) "P${(ms / 86_400_000L).coerceAtLeast(1)}D" else "PT${ms / 1000L}S"
+            )
+        }
+    }
+
+    /** Replace the event's reminders with a single one (or clear them if minutes < 0). */
+    private fun applyReminder(c: Context, eventId: Long, minutes: Int) {
+        try {
+            c.contentResolver.delete(
+                CalendarContract.Reminders.CONTENT_URI,
+                "${CalendarContract.Reminders.EVENT_ID} = ?", arrayOf(eventId.toString())
+            )
+            if (minutes >= 0) {
+                c.contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, ContentValues().apply {
+                    put(CalendarContract.Reminders.EVENT_ID, eventId)
+                    put(CalendarContract.Reminders.MINUTES, minutes)
+                    put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+                })
+            }
+        } catch (_: Exception) {
+        }
     }
 
     /** Returns the new event id, or null on failure. */
     fun insertEvent(
         c: Context, calId: Long, title: String, begin: Long, end: Long,
-        allDay: Boolean, location: String?, desc: String?
+        allDay: Boolean, location: String?, desc: String?, rrule: String?, reminderMinutes: Int
     ): Long? = try {
         val uri = c.contentResolver.insert(
             CalendarContract.Events.CONTENT_URI,
-            eventValues(calId, title, begin, end, allDay, location, desc)
+            eventValues(calId, title, begin, end, allDay, location, desc, rrule, reminderMinutes >= 0)
         )
-        uri?.lastPathSegment?.toLongOrNull()
+        val id = uri?.lastPathSegment?.toLongOrNull()
+        if (id != null) applyReminder(c, id, reminderMinutes)
+        id
     } catch (_: Exception) {
         null
     }
 
     fun updateEvent(
         c: Context, eventId: Long, calId: Long, title: String, begin: Long, end: Long,
-        allDay: Boolean, location: String?, desc: String?
+        allDay: Boolean, location: String?, desc: String?, rrule: String?, reminderMinutes: Int
     ): Boolean = try {
-        c.contentResolver.update(
+        val n = c.contentResolver.update(
             ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId),
-            eventValues(calId, title, begin, end, allDay, location, desc), null, null
-        ) > 0
+            eventValues(calId, title, begin, end, allDay, location, desc, rrule, reminderMinutes >= 0), null, null
+        )
+        if (n > 0) applyReminder(c, eventId, reminderMinutes)
+        n > 0
     } catch (_: Exception) {
         false
     }
