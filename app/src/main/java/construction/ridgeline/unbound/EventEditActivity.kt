@@ -33,6 +33,8 @@ class EventEditActivity : Activity() {
         const val EXTRA_EVENT_ID = "event_id"
         const val EXTRA_DAY_MS = "day_ms"
         const val EXTRA_END_DAY_MS = "end_day_ms"
+        const val EXTRA_START_MS = "start_ms" // exact timed range (from the day timeline)
+        const val EXTRA_END_MS = "end_ms"
         private const val REQ = 71
     }
 
@@ -133,8 +135,14 @@ class EventEditActivity : Activity() {
             }
         } else {
             val dayMs = intent?.getLongExtra(EXTRA_DAY_MS, System.currentTimeMillis()) ?: System.currentTimeMillis()
+            val startMs = intent?.getLongExtra(EXTRA_START_MS, -1L) ?: -1L
+            val endMs = intent?.getLongExtra(EXTRA_END_MS, -1L) ?: -1L
             val endDayMs = intent?.getLongExtra(EXTRA_END_DAY_MS, -1L) ?: -1L
-            if (endDayMs > 0 && endDayMs != dayMs) {
+            if (startMs > 0 && endMs > 0) {
+                // exact timed range dragged on the day timeline
+                startCal.timeInMillis = startMs
+                endCal.timeInMillis = endMs
+            } else if (endDayMs > 0 && endDayMs != dayMs) {
                 // dragged across days in the month view -> all-day event spanning the range
                 allday.isChecked = true
                 startCal.timeInMillis = minOf(dayMs, endDayMs)

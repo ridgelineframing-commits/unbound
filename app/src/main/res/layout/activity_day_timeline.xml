@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/day_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#14181F">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="8dp">
+
+        <Button android:id="@+id/day_prev" android:layout_width="48dp" android:layout_height="42dp" android:minWidth="0dp" android:text="‹" android:textSize="22sp" android:textColor="#AEB4BF" android:background="@android:color/transparent" />
+        <TextView android:id="@+id/day_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:text="" android:textColor="#F4F5F7" android:textSize="17sp" android:fontFamily="sans-serif-medium" />
+        <Button android:id="@+id/day_next" android:layout_width="48dp" android:layout_height="42dp" android:minWidth="0dp" android:text="›" android:textSize="22sp" android:textColor="#AEB4BF" android:background="@android:color/transparent" />
+        <Button android:id="@+id/day_add" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minWidth="0dp" android:paddingStart="14dp" android:paddingEnd="14dp" android:text="+ Add" android:textColor="#101318" android:backgroundTint="#8FE3C0" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/day_allday"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="6dp"
+        android:textColor="#AEB4BF"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <ScrollView
+        android:id="@+id/day_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none">
+
+        <FrameLayout
+            android:id="@+id/day_timeline_holder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </ScrollView>
+</LinearLayout>
