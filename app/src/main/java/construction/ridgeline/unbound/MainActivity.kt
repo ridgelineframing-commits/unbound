@@ -76,6 +76,7 @@ class MainActivity : Activity() {
     private var gridStartField: LocalDate = LocalDate.now()
     private var gridRows = 0
     private var dragStartDate: LocalDate? = null
+    private var monthLoadToken = 0 // guards against a stale month load overwriting newer state
     private val dayEvents = ArrayList<Ev>()
     private lateinit var dayEventsAdapter: DayEventsAdapter
     private val dayTimeFmt = java.text.SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -268,10 +269,11 @@ class MainActivity : Activity() {
         val endMs = gridEnd.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val hidden = Prefs.hiddenCals(this)
         val ok = granted()
+        val token = ++monthLoadToken
         Thread {
             val evs = if (ok) CalendarRepository.events(this, startMs, endMs, hidden) else emptyList()
             runOnUiThread {
-                if (isFinishing || isDestroyed || viewMode != 2) return@runOnUiThread
+                if (isFinishing || isDestroyed || viewMode != 2 || token != monthLoadToken) return@runOnUiThread
                 monthEvents = evs
                 if (selectedDay.year != displayedMonth.year || selectedDay.month != displayedMonth.month) {
                     val today = LocalDate.now()

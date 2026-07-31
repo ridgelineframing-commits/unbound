@@ -17,6 +17,7 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -33,13 +34,13 @@ class EventEditActivity : Activity() {
         const val EXTRA_DAY_MS = "day_ms"
         const val EXTRA_END_DAY_MS = "end_day_ms"
         private const val REQ = 71
-        private const val DAY_MS = 24L * 60 * 60 * 1000
     }
 
     private val startCal = Calendar.getInstance()
     private val endCal = Calendar.getInstance()
     private var eventId = -1L
     private var cals: List<CalInfo> = emptyList()
+    private var originalRrule = ""
 
     private val repeatRules = arrayOf<String?>(null, "FREQ=DAILY", "FREQ=WEEKLY", "FREQ=MONTHLY", "FREQ=YEARLY")
     private val repeatLabels = listOf("Does not repeat", "Every day", "Every week", "Every month", "Every year")
@@ -78,12 +79,19 @@ class EventEditActivity : Activity() {
         if (cals.isEmpty()) { toast("No calendar you can add events to"); finish(); return }
 
         val spinner = whiteSpinner(R.id.ev_calendar, cals.map { it.name })
-        val repeat = whiteSpinner(R.id.ev_repeat, repeatLabels)
         val reminder = whiteSpinner(R.id.ev_reminder, reminderLabels)
-
         val allday = findViewById<Switch>(R.id.ev_allday)
 
         val detail = if (eventId != -1L) CalendarRepository.eventById(this, eventId) else null
+        originalRrule = detail?.rrule ?: ""
+        val repeatClass = RecurrenceUtil.classify(originalRrule)
+        // Add a "Custom" entry only when the event has a rule we can't round-trip,
+        // so a complex RRULE is preserved instead of silently downgraded.
+        val repeat = whiteSpinner(
+            R.id.ev_repeat,
+            if (repeatClass == RecurrenceUtil.Repeat.CUSTOM) repeatLabels + "Custom (keep as-is)" else repeatLabels
+        )
+
         if (detail != null) {
             findViewById<TextView>(R.id.ev_header).text = "Edit event"
             findViewById<EditText>(R.id.ev_title).setText(detail.title)
@@ -101,8 +109,16 @@ class EventEditActivity : Activity() {
             }
             val idx = cals.indexOfFirst { it.id == detail.calId }
             if (idx >= 0) spinner.setSelection(idx)
-            val ri = repeatRules.indexOfFirst { it != null && detail.rrule.contains(it) }
-            repeat.setSelection(if (ri >= 0) ri else 0)
+            repeat.setSelection(
+                when (repeatClass) {
+                    RecurrenceUtil.Repeat.DAILY -> 1
+                    RecurrenceUtil.Repeat.WEEKLY -> 2
+                    RecurrenceUtil.Repeat.MONTHLY -> 3
+                    RecurrenceUtil.Repeat.YEARLY -> 4
+                    RecurrenceUtil.Repeat.CUSTOM -> repeatLabels.size // the appended "Custom" entry
+                    else -> 0
+                }
+            )
             val mi = reminderMins.indexOf(detail.reminderMinutes)
             reminder.setSelection(if (mi >= 0) mi else 0)
             findViewById<Button>(R.id.ev_delete).apply {
@@ -178,15 +194,22 @@ class EventEditActivity : Activity() {
         val calId = cals[findViewById<Spinner>(R.id.ev_calendar).selectedItemPosition].id
         val location = findViewById<EditText>(R.id.ev_location).text.toString()
         val notes = findViewById<EditText>(R.id.ev_notes).text.toString()
-        val rrule = repeatRules[findViewById<Spinner>(R.id.ev_repeat).selectedItemPosition]
+        val ri = findViewById<Spinner>(R.id.ev_repeat).selectedItemPosition
+        val rrule = if (ri < repeatRules.size) repeatRules[ri] else originalRrule // "Custom" keeps the original
         val reminder = reminderMins[findViewById<Spinner>(R.id.ev_reminder).selectedItemPosition]
 
         val begin: Long
         val end: Long
         if (allDay) {
-            begin = utcMidnight(startCal)
-            val lastDay = maxOf(utcMidnight(endCal), begin)
-            end = lastDay + DAY_MS // DTEND is the midnight after the last day
+            val startDate = LocalDate.of(
+                startCal.get(Calendar.YEAR), startCal.get(Calendar.MONTH) + 1, startCal.get(Calendar.DAY_OF_MONTH)
+            )
+            val endRaw = LocalDate.of(
+                endCal.get(Calendar.YEAR), endCal.get(Calendar.MONTH) + 1, endCal.get(Calendar.DAY_OF_MONTH)
+            )
+            val lastDate = if (endRaw.isBefore(startDate)) startDate else endRaw
+            begin = AllDayUtil.startMillis(startDate)
+            end = AllDayUtil.endMillisExclusive(lastDate)
         } else {
             begin = startCal.timeInMillis
             end = if (endCal.timeInMillis <= begin) begin + 60L * 60 * 1000 else endCal.timeInMillis
@@ -219,13 +242,6 @@ class EventEditActivity : Activity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
-    }
-
-    private fun utcMidnight(local: Calendar): Long {
-        val u = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-        u.clear()
-        u.set(local.get(Calendar.YEAR), local.get(Calendar.MONTH), local.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
-        return u.timeInMillis
     }
 
     private fun whiteSpinner(id: Int, labels: List<String>): Spinner {

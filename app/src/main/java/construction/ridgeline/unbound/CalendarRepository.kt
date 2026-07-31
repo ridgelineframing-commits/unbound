@@ -4,7 +4,10 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.provider.CalendarContract
+import android.util.Log
 import java.util.TimeZone
+
+private const val TAG = "UnboundCal"
 
 data class CalInfo(
     val id: Long,
@@ -163,7 +166,8 @@ object CalendarRepository {
                     )
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "searchEvents failed", e)
         }
         return out
     }
@@ -192,7 +196,8 @@ object CalendarRepository {
                         cur.getInt(3) == 1, cur.getInt(4) == 1, cur.getString(5) ?: ""))
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "writableCalendars failed", e)
         }
         return out
     }
@@ -222,7 +227,7 @@ object CalendarRepository {
                     val begin = cur.getLong(3)
                     val end = when {
                         !cur.isNull(4) -> cur.getLong(4)
-                        else -> begin + durationToMs(cur.getString(10), allDay)
+                        else -> begin + DurationUtil.toMillis(cur.getString(10), allDay)
                     }
                     return EventDetail(
                         id = cur.getLong(0),
@@ -239,7 +244,8 @@ object CalendarRepository {
                     )
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "eventById failed", e)
         }
         return null
     }
@@ -252,23 +258,12 @@ object CalendarRepository {
                 arrayOf(CalendarContract.Reminders.MINUTES),
                 "${CalendarContract.Reminders.EVENT_ID} = ?", arrayOf(eventId.toString()), null
             )?.use { cur -> if (cur.moveToFirst()) return cur.getInt(0) }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "reminderMinutes failed", e)
         }
         return -1
     }
 
-    /** Parse an RFC5545 DURATION like "PT3600S" / "P1D" to milliseconds. */
-    private fun durationToMs(dur: String?, allDay: Boolean): Long {
-        if (dur.isNullOrEmpty()) return if (allDay) 86_400_000L else 3_600_000L
-        return try {
-            val days = Regex("P(\\d+)D").find(dur)?.groupValues?.get(1)?.toLong() ?: 0L
-            val secs = Regex("T(\\d+)S").find(dur)?.groupValues?.get(1)?.toLong() ?: 0L
-            val ms = days * 86_400_000L + secs * 1000L
-            if (ms > 0) ms else if (allDay) 86_400_000L else 3_600_000L
-        } catch (_: Exception) {
-            if (allDay) 86_400_000L else 3_600_000L
-        }
-    }
 
     private fun eventValues(
         calId: Long, title: String, begin: Long, end: Long,
@@ -292,10 +287,7 @@ object CalendarRepository {
             putNull(CalendarContract.Events.DTEND)
             put(CalendarContract.Events.RRULE, rrule)
             val ms = (end - begin).coerceAtLeast(if (allDay) 86_400_000L else 300_000L)
-            put(
-                CalendarContract.Events.DURATION,
-                if (allDay) "P${(ms / 86_400_000L).coerceAtLeast(1)}D" else "PT${ms / 1000L}S"
-            )
+            put(CalendarContract.Events.DURATION, DurationUtil.format(ms, allDay))
         }
     }
 
@@ -313,7 +305,8 @@ object CalendarRepository {
                     put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
                 })
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "applyReminder failed", e)
         }
     }
 
@@ -329,7 +322,8 @@ object CalendarRepository {
         val id = uri?.lastPathSegment?.toLongOrNull()
         if (id != null) applyReminder(c, id, reminderMinutes)
         id
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.w(TAG, "insertEvent failed", e)
         null
     }
 
@@ -343,7 +337,8 @@ object CalendarRepository {
         )
         if (n > 0) applyReminder(c, eventId, reminderMinutes)
         n > 0
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.w(TAG, "updateEvent failed", e)
         false
     }
 
@@ -351,7 +346,8 @@ object CalendarRepository {
         c.contentResolver.delete(
             ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId), null, null
         ) > 0
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.w(TAG, "deleteEvent failed", e)
         false
     }
 }

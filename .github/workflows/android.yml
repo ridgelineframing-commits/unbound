@@ -33,11 +33,27 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      # Published (main/master) builds must be signed with the stable key so
+      # updates install in place. Fail closed rather than shipping an APK signed
+      # with the throwaway CI debug key that won't upgrade an existing install.
+      - name: Require stable signing key for published builds
+        if: ${{ github.event_name == 'push' }}
+        env:
+          KS: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KS" ]; then
+            echo "::error::DEBUG_KEYSTORE_B64 secret is missing; a published build would not install over existing copies. Failing closed."
+            exit 1
+          fi
+
       - name: Restore stable signing keystore
         if: ${{ env.KS != '' }}
         env:
           KS: ${{ secrets.DEBUG_KEYSTORE_B64 }}
         run: echo "$KS" | base64 -d > app/unbound-debug.keystore
+
+      - name: Unit tests
+        run: gradle testDebugUnitTest --no-daemon --stacktrace
 
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
