@@ -133,6 +133,7 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.add_event_btn).setOnClickListener {
             openEditor(-1L, selectedDay)
         }
+        findViewById<TextView>(R.id.sel_day_label).setOnClickListener { openDayTimeline(selectedDay) }
 
         // Tap a day to select it; drag across days to create an all-day event.
         findViewById<LinearLayout>(R.id.month_grid).setOnTouchListener { v, e ->
@@ -463,6 +464,15 @@ class MainActivity : Activity() {
             day.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         )
         startActivity(i)
+    }
+
+    private fun openDayTimeline(date: LocalDate) {
+        startActivity(
+            Intent(this, DayTimelineActivity::class.java).putExtra(
+                DayTimelineActivity.EXTRA_DATE_MS,
+                date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            )
+        )
     }
 
     private fun openRangeEditor(start: LocalDate, end: LocalDate) {
