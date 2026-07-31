@@ -126,7 +126,7 @@ class MainActivity : Activity() {
         dayEventsAdapter = DayEventsAdapter()
         findViewById<ListView>(R.id.day_events).adapter = dayEventsAdapter
         findViewById<ListView>(R.id.day_events).setOnItemClickListener { _, _, pos, _ ->
-            openEditor(dayEvents[pos].id, null)
+            openEditor(dayEvents[pos].id, null, dayEvents[pos].begin)
         }
         findViewById<Button>(R.id.btn_month_prev).setOnClickListener { stepMonth(-1) }
         findViewById<Button>(R.id.btn_month_next).setOnClickListener { stepMonth(1) }
@@ -456,9 +456,10 @@ class MainActivity : Activity() {
         }.sortedBy { it.begin }
     }
 
-    private fun openEditor(eventId: Long, day: LocalDate?) {
+    private fun openEditor(eventId: Long, day: LocalDate?, instanceMs: Long = -1L) {
         val i = Intent(this, EventEditActivity::class.java)
         if (eventId != -1L) i.putExtra(EventEditActivity.EXTRA_EVENT_ID, eventId)
+        if (instanceMs > 0) i.putExtra(EventEditActivity.EXTRA_INSTANCE_MS, instanceMs)
         if (day != null) i.putExtra(
             EventEditActivity.EXTRA_DAY_MS,
             day.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()

@@ -45,7 +45,8 @@ class SearchActivity : Activity() {
         findViewById<ListView>(R.id.search_results).adapter = adapter
         findViewById<ListView>(R.id.search_results).setOnItemClickListener { _, _, pos, _ ->
             startActivity(Intent(this, EventEditActivity::class.java)
-                .putExtra(EventEditActivity.EXTRA_EVENT_ID, results[pos].id))
+                .putExtra(EventEditActivity.EXTRA_EVENT_ID, results[pos].id)
+                .putExtra(EventEditActivity.EXTRA_INSTANCE_MS, results[pos].begin))
         }
         val input = findViewById<EditText>(R.id.search_input)
         input.addTextChangedListener(object : TextWatcher {
