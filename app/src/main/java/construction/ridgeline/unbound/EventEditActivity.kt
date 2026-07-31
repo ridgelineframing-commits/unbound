@@ -83,6 +83,12 @@ class EventEditActivity : Activity() {
         val allday = findViewById<Switch>(R.id.ev_allday)
 
         val detail = if (eventId != -1L) CalendarRepository.eventById(this, eventId) else null
+        // If the event lives on a calendar we can't write to, editing here would
+        // silently move it to a writable one on save. Refuse instead.
+        if (detail != null && cals.none { it.id == detail.calId }) {
+            toast("That event's calendar is read-only — open it in your calendar app to edit")
+            finish(); return
+        }
         originalRrule = detail?.rrule ?: ""
         val repeatClass = RecurrenceUtil.classify(originalRrule)
         // Add a "Custom" entry only when the event has a rule we can't round-trip,

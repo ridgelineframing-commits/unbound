@@ -1,5 +1,6 @@
 package construction.ridgeline.unbound
 
+import android.content.ContentProviderOperation
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
@@ -152,9 +153,10 @@ object CalendarRepository {
         )
         val out = ArrayList<Ev>()
         try {
+            val pattern = "%" + SearchUtil.escapeLike(q) + "%"
             c.contentResolver.query(
                 builder.build(), proj,
-                "${CalendarContract.Instances.TITLE} LIKE ?", arrayOf("%$q%"),
+                "${CalendarContract.Instances.TITLE} LIKE ? ESCAPE '\\'", arrayOf(pattern),
                 CalendarContract.Instances.BEGIN + " ASC"
             )?.use { cur ->
                 while (cur.moveToNext()) {
@@ -291,52 +293,65 @@ object CalendarRepository {
         }
     }
 
-    /** Replace the event's reminders with a single one (or clear them if minutes < 0). */
-    private fun applyReminder(c: Context, eventId: Long, minutes: Int) {
-        try {
-            c.contentResolver.delete(
-                CalendarContract.Reminders.CONTENT_URI,
-                "${CalendarContract.Reminders.EVENT_ID} = ?", arrayOf(eventId.toString())
-            )
-            if (minutes >= 0) {
-                c.contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, ContentValues().apply {
-                    put(CalendarContract.Reminders.EVENT_ID, eventId)
-                    put(CalendarContract.Reminders.MINUTES, minutes)
-                    put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
-                })
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "applyReminder failed", e)
-        }
-    }
+    private fun reminderInsert(): ContentProviderOperation.Builder =
+        ContentProviderOperation.newInsert(CalendarContract.Reminders.CONTENT_URI)
+            .withValue(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
 
-    /** Returns the new event id, or null on failure. */
+    /**
+     * Insert an event and its reminder as one atomic batch, so we never end up with
+     * an event whose reminder silently failed to save. Returns the new id or null.
+     */
     fun insertEvent(
         c: Context, calId: Long, title: String, begin: Long, end: Long,
         allDay: Boolean, location: String?, desc: String?, rrule: String?, reminderMinutes: Int
     ): Long? = try {
-        val uri = c.contentResolver.insert(
-            CalendarContract.Events.CONTENT_URI,
-            eventValues(calId, title, begin, end, allDay, location, desc, rrule, reminderMinutes >= 0)
+        val ops = ArrayList<ContentProviderOperation>()
+        ops.add(
+            ContentProviderOperation.newInsert(CalendarContract.Events.CONTENT_URI)
+                .withValues(eventValues(calId, title, begin, end, allDay, location, desc, rrule, reminderMinutes >= 0))
+                .build()
         )
-        val id = uri?.lastPathSegment?.toLongOrNull()
-        if (id != null) applyReminder(c, id, reminderMinutes)
-        id
+        if (reminderMinutes >= 0) {
+            ops.add(
+                reminderInsert()
+                    .withValueBackReference(CalendarContract.Reminders.EVENT_ID, 0) // event from op 0
+                    .withValue(CalendarContract.Reminders.MINUTES, reminderMinutes)
+                    .build()
+            )
+        }
+        val results = c.contentResolver.applyBatch(CalendarContract.AUTHORITY, ops)
+        results.firstOrNull()?.uri?.lastPathSegment?.toLongOrNull()
     } catch (e: Exception) {
         Log.w(TAG, "insertEvent failed", e)
         null
     }
 
+    /** Update an event and rewrite its single reminder atomically. */
     fun updateEvent(
         c: Context, eventId: Long, calId: Long, title: String, begin: Long, end: Long,
         allDay: Boolean, location: String?, desc: String?, rrule: String?, reminderMinutes: Int
     ): Boolean = try {
-        val n = c.contentResolver.update(
-            ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId),
-            eventValues(calId, title, begin, end, allDay, location, desc, rrule, reminderMinutes >= 0), null, null
+        val ops = ArrayList<ContentProviderOperation>()
+        ops.add(
+            ContentProviderOperation.newUpdate(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId))
+                .withValues(eventValues(calId, title, begin, end, allDay, location, desc, rrule, reminderMinutes >= 0))
+                .build()
         )
-        if (n > 0) applyReminder(c, eventId, reminderMinutes)
-        n > 0
+        ops.add(
+            ContentProviderOperation.newDelete(CalendarContract.Reminders.CONTENT_URI)
+                .withSelection("${CalendarContract.Reminders.EVENT_ID} = ?", arrayOf(eventId.toString()))
+                .build()
+        )
+        if (reminderMinutes >= 0) {
+            ops.add(
+                reminderInsert()
+                    .withValue(CalendarContract.Reminders.EVENT_ID, eventId)
+                    .withValue(CalendarContract.Reminders.MINUTES, reminderMinutes)
+                    .build()
+            )
+        }
+        val results = c.contentResolver.applyBatch(CalendarContract.AUTHORITY, ops)
+        (results.getOrNull(0)?.count ?: 0) > 0
     } catch (e: Exception) {
         Log.w(TAG, "updateEvent failed", e)
         false
