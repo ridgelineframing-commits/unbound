@@ -47,7 +47,8 @@ class DayTimelineActivity : Activity() {
         timeline = TimelineView(this).apply {
             onEventTap = { ev ->
                 startActivity(Intent(this@DayTimelineActivity, EventEditActivity::class.java)
-                    .putExtra(EventEditActivity.EXTRA_EVENT_ID, ev.id))
+                    .putExtra(EventEditActivity.EXTRA_EVENT_ID, ev.id)
+                    .putExtra(EventEditActivity.EXTRA_INSTANCE_MS, ev.begin))
             }
             onCreateRange = { startMs, endMs ->
                 startActivity(Intent(this@DayTimelineActivity, EventEditActivity::class.java)

@@ -35,7 +35,9 @@ class EventEditActivity : Activity() {
         const val EXTRA_END_DAY_MS = "end_day_ms"
         const val EXTRA_START_MS = "start_ms" // exact timed range (from the day timeline)
         const val EXTRA_END_MS = "end_ms"
+        const val EXTRA_INSTANCE_MS = "instance_ms" // which occurrence of a recurring event
         private const val REQ = 71
+        private val SCOPE_LABELS = arrayOf("This event only", "This and following events", "All events")
     }
 
     private val startCal = Calendar.getInstance()
@@ -43,6 +45,7 @@ class EventEditActivity : Activity() {
     private var eventId = -1L
     private var cals: List<CalInfo> = emptyList()
     private var originalRrule = ""
+    private var instanceMs = -1L // the tapped occurrence, for per-instance recurring edits
 
     private val repeatRules = arrayOf<String?>(null, "FREQ=DAILY", "FREQ=WEEKLY", "FREQ=MONTHLY", "FREQ=YEARLY")
     private val repeatLabels = listOf("Does not repeat", "Every day", "Every week", "Every month", "Every year")
@@ -92,6 +95,7 @@ class EventEditActivity : Activity() {
             finish(); return
         }
         originalRrule = detail?.rrule ?: ""
+        instanceMs = (intent?.getLongExtra(EXTRA_INSTANCE_MS, -1L) ?: -1L).takeIf { it > 0 } ?: (detail?.begin ?: -1L)
         val repeatClass = RecurrenceUtil.classify(originalRrule)
         // Add a "Custom" entry only when the event has a rule we can't round-trip,
         // so a complex RRULE is preserved instead of silently downgraded.
@@ -212,8 +216,35 @@ class EventEditActivity : Activity() {
         val rrule = if (ri < repeatRules.size) repeatRules[ri] else originalRrule // "Custom" keeps the original
         val reminder = reminderMins[findViewById<Spinner>(R.id.ev_reminder).selectedItemPosition]
 
-        val begin: Long
-        val end: Long
+        val (begin, end) = computeBeginEnd(allDay)
+
+        // Recurring event: ask whether the change applies to this occurrence,
+        // this-and-future, or the whole series.
+        if (eventId != -1L && originalRrule.isNotEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("Save repeating event")
+                .setItems(SCOPE_LABELS) { _, which ->
+                    val ok = when (which) {
+                        0 -> CalendarRepository.updateInstance(this, eventId, instanceMs, title, begin, end, allDay, location, notes)
+                        1 -> CalendarRepository.capSeriesBefore(this, eventId, instanceMs) &&
+                            CalendarRepository.insertEvent(this, calId, title, begin, end, allDay, location, notes, rrule, reminder) != null
+                        else -> CalendarRepository.updateEvent(this, eventId, calId, title, begin, end, allDay, location, notes, rrule, reminder)
+                    }
+                    finishAfter(ok, "Couldn't save the event")
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+            return
+        }
+
+        val ok = if (eventId == -1L)
+            CalendarRepository.insertEvent(this, calId, title, begin, end, allDay, location, notes, rrule, reminder) != null
+        else
+            CalendarRepository.updateEvent(this, eventId, calId, title, begin, end, allDay, location, notes, rrule, reminder)
+        finishAfter(ok, "Couldn't save the event")
+    }
+
+    private fun computeBeginEnd(allDay: Boolean): Pair<Long, Long> =
         if (allDay) {
             val startDate = LocalDate.of(
                 startCal.get(Calendar.YEAR), startCal.get(Calendar.MONTH) + 1, startCal.get(Calendar.DAY_OF_MONTH)
@@ -222,37 +253,44 @@ class EventEditActivity : Activity() {
                 endCal.get(Calendar.YEAR), endCal.get(Calendar.MONTH) + 1, endCal.get(Calendar.DAY_OF_MONTH)
             )
             val lastDate = if (endRaw.isBefore(startDate)) startDate else endRaw
-            begin = AllDayUtil.startMillis(startDate)
-            end = AllDayUtil.endMillisExclusive(lastDate)
+            AllDayUtil.startMillis(startDate) to AllDayUtil.endMillisExclusive(lastDate)
         } else {
-            begin = startCal.timeInMillis
-            end = if (endCal.timeInMillis <= begin) begin + 60L * 60 * 1000 else endCal.timeInMillis
+            val begin = startCal.timeInMillis
+            val end = if (endCal.timeInMillis <= begin) begin + 60L * 60 * 1000 else endCal.timeInMillis
+            begin to end
         }
 
-        val ok = if (eventId == -1L)
-            CalendarRepository.insertEvent(this, calId, title, begin, end, allDay, location, notes, rrule, reminder) != null
-        else
-            CalendarRepository.updateEvent(this, eventId, calId, title, begin, end, allDay, location, notes, rrule, reminder)
-
+    private fun finishAfter(ok: Boolean, failMsg: String) {
         if (ok) {
             UnboundWidgetProvider.updateAll(this)
             setResult(RESULT_OK)
             finish()
         } else {
-            toast("Couldn't save the event")
+            toast(failMsg)
         }
     }
 
     private fun confirmDelete() {
+        if (originalRrule.isNotEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("Delete repeating event")
+                .setItems(SCOPE_LABELS) { _, which ->
+                    val ok = when (which) {
+                        0 -> CalendarRepository.cancelInstance(this, eventId, instanceMs)
+                        1 -> CalendarRepository.capSeriesBefore(this, eventId, instanceMs)
+                        else -> CalendarRepository.deleteEvent(this, eventId)
+                    }
+                    finishAfter(ok, "Couldn't delete the event")
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+            return
+        }
         AlertDialog.Builder(this)
             .setTitle("Delete event?")
             .setMessage("This removes it from your calendar.")
             .setPositiveButton("Delete") { _, _ ->
-                if (CalendarRepository.deleteEvent(this, eventId)) {
-                    UnboundWidgetProvider.updateAll(this)
-                    setResult(RESULT_OK)
-                    finish()
-                } else toast("Couldn't delete the event")
+                finishAfter(CalendarRepository.deleteEvent(this, eventId), "Couldn't delete the event")
             }
             .setNegativeButton("Cancel", null)
             .show()

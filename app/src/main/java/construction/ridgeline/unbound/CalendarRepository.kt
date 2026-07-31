@@ -6,6 +6,9 @@ import android.content.ContentValues
 import android.content.Context
 import android.provider.CalendarContract
 import android.util.Log
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.TimeZone
 
 private const val TAG = "UnboundCal"
@@ -363,6 +366,70 @@ object CalendarRepository {
         ) > 0
     } catch (e: Exception) {
         Log.w(TAG, "deleteEvent failed", e)
+        false
+    }
+
+    // ---- recurring-series edits (this / this-and-future / all) ---------------
+
+    /** Cancel a single occurrence of a recurring event (a "this event" delete). */
+    fun cancelInstance(c: Context, eventId: Long, instanceStartMs: Long): Boolean = try {
+        val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_EXCEPTION_URI, eventId)
+        val cv = ContentValues().apply {
+            put(CalendarContract.Events.ORIGINAL_INSTANCE_TIME, instanceStartMs)
+            put(CalendarContract.Events.STATUS, CalendarContract.Events.STATUS_CANCELED)
+        }
+        c.contentResolver.insert(uri, cv) != null
+    } catch (e: Exception) {
+        Log.w(TAG, "cancelInstance failed", e)
+        false
+    }
+
+    /** Override a single occurrence with new values (a "this event" edit). */
+    fun updateInstance(
+        c: Context, eventId: Long, instanceStartMs: Long, title: String, begin: Long, end: Long,
+        allDay: Boolean, location: String?, desc: String?
+    ): Boolean = try {
+        val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_EXCEPTION_URI, eventId)
+        val cv = ContentValues().apply {
+            put(CalendarContract.Events.ORIGINAL_INSTANCE_TIME, instanceStartMs)
+            put(CalendarContract.Events.TITLE, title)
+            put(CalendarContract.Events.DTSTART, begin)
+            put(CalendarContract.Events.DTEND, end)
+            put(CalendarContract.Events.ALL_DAY, if (allDay) 1 else 0)
+            put(CalendarContract.Events.EVENT_TIMEZONE, if (allDay) "UTC" else TimeZone.getDefault().id)
+            put(CalendarContract.Events.EVENT_LOCATION, location ?: "")
+            put(CalendarContract.Events.DESCRIPTION, desc ?: "")
+            put(CalendarContract.Events.STATUS, CalendarContract.Events.STATUS_CONFIRMED)
+        }
+        c.contentResolver.insert(uri, cv) != null
+    } catch (e: Exception) {
+        Log.w(TAG, "updateInstance failed", e)
+        false
+    }
+
+    /**
+     * End the recurring series just before [instanceStartMs] by adding an UNTIL to
+     * its RRULE (used by both "this and future" edit — paired with a fresh series —
+     * and "this and future" delete). Returns false if the event isn't recurring.
+     */
+    fun capSeriesBefore(c: Context, eventId: Long, instanceStartMs: Long): Boolean = try {
+        val detail = eventById(c, eventId)
+        if (detail == null || detail.rrule.isEmpty()) {
+            false
+        } else {
+            val kept = detail.rrule.split(";")
+                .filter { it.isNotEmpty() && !it.startsWith("UNTIL=") && !it.startsWith("COUNT=") }
+            val fmt = SimpleDateFormat(if (detail.allDay) "yyyyMMdd" else "yyyyMMdd'T'HHmmss'Z'", Locale.US)
+            fmt.timeZone = TimeZone.getTimeZone("UTC")
+            val until = fmt.format(Date(instanceStartMs - 1000)) // strictly before this occurrence
+            val newRule = (kept + "UNTIL=$until").joinToString(";")
+            val cv = ContentValues().apply { put(CalendarContract.Events.RRULE, newRule) }
+            c.contentResolver.update(
+                ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId), cv, null, null
+            ) > 0
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "capSeriesBefore failed", e)
         false
     }
 }
