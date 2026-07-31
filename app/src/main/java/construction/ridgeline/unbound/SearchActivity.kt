@@ -17,6 +17,13 @@ import android.widget.TextView
 import java.text.SimpleDateFormat
 import java.time.ZoneId
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Title search across the device calendars over a wide window (roughly the last
@@ -26,6 +33,8 @@ class SearchActivity : Activity() {
 
     private val results = ArrayList<Ev>()
     private lateinit var adapter: ResultsAdapter
+    private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var searchJob: Job? = null
     private val timeFmt = SimpleDateFormat("EEE, MMM d yyyy · h:mm a", Locale.getDefault())
     private val dayFmt = SimpleDateFormat("EEE, MMM d yyyy", Locale.getDefault())
 
@@ -69,15 +78,20 @@ class SearchActivity : Activity() {
         val startMs = now.minusMonths(6).atStartOfDay(zone).toInstant().toEpochMilli()
         val endMs = now.plusMonths(18).atStartOfDay(zone).toInstant().toEpochMilli()
         val hidden = Prefs.hiddenCals(this)
-        Thread {
-            val found = CalendarRepository.searchEvents(this, q, startMs, endMs, hidden)
-            runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
-                results.clear(); results.addAll(found)
-                adapter.notifyDataSetChanged()
-                status.text = if (found.isEmpty()) "No matches." else "${found.size} match${if (found.size == 1) "" else "es"}"
+        searchJob?.cancel()
+        searchJob = uiScope.launch {
+            val found = withContext(Dispatchers.IO) {
+                CalendarRepository.searchEvents(this@SearchActivity, q, startMs, endMs, hidden)
             }
-        }.start()
+            results.clear(); results.addAll(found)
+            adapter.notifyDataSetChanged()
+            status.text = if (found.isEmpty()) "No matches." else "${found.size} match${if (found.size == 1) "" else "es"}"
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        uiScope.cancel()
     }
 
     private inner class ResultsAdapter : BaseAdapter() {

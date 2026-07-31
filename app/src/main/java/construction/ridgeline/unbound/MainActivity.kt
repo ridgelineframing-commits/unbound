@@ -45,6 +45,13 @@ import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.util.Locale
 import kotlin.math.abs
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Full-screen calendar per the Float 2c spec: glass week cards floating over
@@ -76,7 +83,11 @@ class MainActivity : Activity() {
     private var gridStartField: LocalDate = LocalDate.now()
     private var gridRows = 0
     private var dragStartDate: LocalDate? = null
-    private var monthLoadToken = 0 // guards against a stale month load overwriting newer state
+
+    // Main-thread scope for UI-bound loads; cancelled in onDestroy so nothing
+    // touches a dead Activity. A cancellable monthJob replaces the old stale-token.
+    private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var monthJob: Job? = null
     private val dayEvents = ArrayList<Ev>()
     private lateinit var dayEventsAdapter: DayEventsAdapter
     private val dayTimeFmt = java.text.SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -172,6 +183,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        uiScope.cancel()
         adapter.clearCache()
     }
 
@@ -228,18 +240,15 @@ class MainActivity : Activity() {
         val endMs = rangeStart.plusWeeks(WEEK_COUNT.toLong())
             .atStartOfDay(zone).toInstant().toEpochMilli()
         val hidden = Prefs.hiddenCals(this)
-        Thread {
-            val evs = CalendarRepository.events(this, startMs, endMs, hidden)
-            runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
-                events = evs
-                adapter.clearCache()
-                adapter.notifyDataSetChanged()
-                if (listView.firstVisiblePosition == 0 && viewMode == 0) {
-                    listView.setSelection(WEEKS_BACK)
-                }
+        uiScope.launch {
+            val evs = withContext(Dispatchers.IO) { CalendarRepository.events(this@MainActivity, startMs, endMs, hidden) }
+            events = evs
+            adapter.clearCache()
+            adapter.notifyDataSetChanged()
+            if (listView.firstVisiblePosition == 0 && viewMode == 0) {
+                listView.setSelection(WEEKS_BACK)
             }
-        }.start()
+        }
         if (viewMode == 2) showMonth()
         pokeWidgets()
     }
@@ -269,21 +278,21 @@ class MainActivity : Activity() {
         val endMs = gridEnd.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val hidden = Prefs.hiddenCals(this)
         val ok = granted()
-        val token = ++monthLoadToken
-        Thread {
-            val evs = if (ok) CalendarRepository.events(this, startMs, endMs, hidden) else emptyList()
-            runOnUiThread {
-                if (isFinishing || isDestroyed || viewMode != 2 || token != monthLoadToken) return@runOnUiThread
-                monthEvents = evs
-                if (selectedDay.year != displayedMonth.year || selectedDay.month != displayedMonth.month) {
-                    val today = LocalDate.now()
-                    selectedDay = if (today.month == displayedMonth.month && today.year == displayedMonth.year)
-                        today else displayedMonth
-                }
-                buildMonthGrid(firstDow, gridStart, gridEnd)
-                updateSelectedDayUi()
+        monthJob?.cancel()
+        monthJob = uiScope.launch {
+            val evs = if (ok) withContext(Dispatchers.IO) {
+                CalendarRepository.events(this@MainActivity, startMs, endMs, hidden)
+            } else emptyList()
+            if (viewMode != 2) return@launch
+            monthEvents = evs
+            if (selectedDay.year != displayedMonth.year || selectedDay.month != displayedMonth.month) {
+                val today = LocalDate.now()
+                selectedDay = if (today.month == displayedMonth.month && today.year == displayedMonth.year)
+                    today else displayedMonth
             }
-        }.start()
+            buildMonthGrid(firstDow, gridStart, gridEnd)
+            updateSelectedDayUi()
+        }
     }
 
     private fun selectDay(date: LocalDate) {
@@ -598,35 +607,35 @@ class MainActivity : Activity() {
         // The calendar scan (instanceCounts over 30 days + calendars) can be heavy
         // on busy accounts — do it off the main thread, then build the rows on the UI.
         val nowMs = System.currentTimeMillis()
-        Thread {
-            val counts = CalendarRepository.instanceCounts(this, nowMs, nowMs + 30L * 24 * 60 * 60 * 1000)
-            val cals = CalendarRepository.calendars(this)
-            runOnUiThread {
-                if (isFinishing || isDestroyed || !granted()) return@runOnUiThread
-                val hidden = Prefs.hiddenCals(this)
-                box.removeAllViews()
-                for (c in cals) {
-                    val cb = CheckBox(this)
-                    val n = counts[c.id] ?: 0
-                    val label = StringBuilder(c.name)
-                    label.append("\n").append(n)
-                        .append(if (n == 1) " event" else " events")
-                        .append(" on device, next 30 days")
-                    if (c.account.isNotEmpty() && !c.name.contains(c.account)) {
-                        label.append(" · ").append(c.account)
-                    }
-                    if (!c.syncOn) {
-                        label.append("\nSYNC OFF — Google Calendar app › this calendar › Sync")
-                    }
-                    cb.text = label.toString()
-                    cb.setTextColor(if (c.syncOn) pal.ink else pal.faint)
-                    cb.isChecked = !hidden.contains(c.id.toString())
-                    cb.tag = c.id.toString()
-                    cb.setOnCheckedChangeListener { _, _ -> saveCals(box) }
-                    box.addView(cb)
-                }
+        uiScope.launch {
+            val counts = withContext(Dispatchers.IO) {
+                CalendarRepository.instanceCounts(this@MainActivity, nowMs, nowMs + 30L * 24 * 60 * 60 * 1000)
             }
-        }.start()
+            val cals = withContext(Dispatchers.IO) { CalendarRepository.calendars(this@MainActivity) }
+            if (!granted()) return@launch
+            val hidden = Prefs.hiddenCals(this@MainActivity)
+            box.removeAllViews()
+            for (c in cals) {
+                val cb = CheckBox(this@MainActivity)
+                val n = counts[c.id] ?: 0
+                val label = StringBuilder(c.name)
+                label.append("\n").append(n)
+                    .append(if (n == 1) " event" else " events")
+                    .append(" on device, next 30 days")
+                if (c.account.isNotEmpty() && !c.name.contains(c.account)) {
+                    label.append(" · ").append(c.account)
+                }
+                if (!c.syncOn) {
+                    label.append("\nSYNC OFF — Google Calendar app › this calendar › Sync")
+                }
+                cb.text = label.toString()
+                cb.setTextColor(if (c.syncOn) pal.ink else pal.faint)
+                cb.isChecked = !hidden.contains(c.id.toString())
+                cb.tag = c.id.toString()
+                cb.setOnCheckedChangeListener { _, _ -> saveCals(box) }
+                box.addView(cb)
+            }
+        }
     }
 
     // ---- in-app settings panel (mirrors the widget's gear) -------------------
