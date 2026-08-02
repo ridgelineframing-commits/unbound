@@ -16,6 +16,7 @@
         <Button android:id="@+id/day_prev" android:layout_width="48dp" android:layout_height="42dp" android:minWidth="0dp" android:text="‹" android:textSize="22sp" android:textColor="#AEB4BF" android:background="@android:color/transparent" />
         <TextView android:id="@+id/day_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:text="" android:textColor="#F4F5F7" android:textSize="17sp" android:fontFamily="sans-serif-medium" />
         <Button android:id="@+id/day_next" android:layout_width="48dp" android:layout_height="42dp" android:minWidth="0dp" android:text="›" android:textSize="22sp" android:textColor="#AEB4BF" android:background="@android:color/transparent" />
+        <Button android:id="@+id/day_week" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minWidth="0dp" android:paddingStart="10dp" android:paddingEnd="10dp" android:text="Week" android:textSize="13sp" android:textColor="#AEB4BF" android:background="@android:color/transparent" />
         <Button android:id="@+id/day_add" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minWidth="0dp" android:paddingStart="14dp" android:paddingEnd="14dp" android:text="+ Add" android:textColor="#101318" android:backgroundTint="#8FE3C0" />
     </LinearLayout>
 
