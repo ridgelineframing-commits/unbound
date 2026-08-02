@@ -1,15 +1,13 @@
 package construction.ridgeline.unbound
 
 import android.app.Activity
-import android.content.ContentUris
 import android.content.Intent
 import android.os.Bundle
-import android.provider.CalendarContract
 
 /**
  * Invisible trampoline: widget day-taps land here (explicit intent — required by
- * Android 14 for mutable PendingIntents), and we bounce straight into the
- * calendar app at that day.
+ * Android 14 for mutable PendingIntents), and we bounce into Unbound's own Day
+ * timeline for that day (rather than out to the system calendar app).
  */
 class DayOpenActivity : Activity() {
 
@@ -18,16 +16,14 @@ class DayOpenActivity : Activity() {
         try {
             val millis = intent?.getLongExtra(EXTRA_DAY_MS, -1L) ?: -1L
             if (millis > 0) {
-                val builder = CalendarContract.CONTENT_URI.buildUpon().appendPath("time")
-                ContentUris.appendId(builder, millis)
                 startActivity(
-                    Intent(Intent.ACTION_VIEW)
-                        .setData(builder.build())
+                    Intent(this, DayTimelineActivity::class.java)
+                        .putExtra(DayTimelineActivity.EXTRA_DATE_MS, millis)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 )
             }
         } catch (_: Exception) {
-            // no calendar app — nothing sensible to do
+            // nothing sensible to do
         }
         finish()
     }
