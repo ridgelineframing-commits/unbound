@@ -60,6 +60,12 @@ class DayTimelineActivity : Activity() {
 
         findViewById<Button>(R.id.day_prev).setOnClickListener { date = date.minusDays(1); load() }
         findViewById<Button>(R.id.day_next).setOnClickListener { date = date.plusDays(1); load() }
+        findViewById<Button>(R.id.day_week).setOnClickListener {
+            startActivity(Intent(this, WeekTimelineActivity::class.java).putExtra(
+                WeekTimelineActivity.EXTRA_DATE_MS,
+                date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            ))
+        }
         findViewById<Button>(R.id.day_add).setOnClickListener {
             startActivity(Intent(this, EventEditActivity::class.java).putExtra(
                 EventEditActivity.EXTRA_DAY_MS,

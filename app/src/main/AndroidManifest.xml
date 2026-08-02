@@ -46,6 +46,10 @@
             android:name=".DayTimelineActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".WeekTimelineActivity"
+            android:exported="false" />
+
         <receiver
             android:name=".UnboundWidgetProvider"
             android:exported="true">

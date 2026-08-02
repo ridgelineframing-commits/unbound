@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#14181F">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="8dp">
+
+        <Button android:id="@+id/wk_prev" android:layout_width="48dp" android:layout_height="42dp" android:minWidth="0dp" android:text="‹" android:textSize="22sp" android:textColor="#AEB4BF" android:background="@android:color/transparent" />
+        <TextView android:id="@+id/wk_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:text="" android:textColor="#F4F5F7" android:textSize="16sp" android:fontFamily="sans-serif-medium" />
+        <Button android:id="@+id/wk_next" android:layout_width="48dp" android:layout_height="42dp" android:minWidth="0dp" android:text="›" android:textSize="22sp" android:textColor="#AEB4BF" android:background="@android:color/transparent" />
+    </LinearLayout>
+
+    <!-- day header, aligned to the timeline's 46dp gutter + 7 equal columns -->
+    <LinearLayout
+        android:id="@+id/wk_days"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingBottom="4dp">
+
+        <View android:layout_width="46dp" android:layout_height="1dp" />
+        <TextView android:id="@+id/wkd0" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="11sp" android:fontFamily="sans-serif-medium" />
+        <TextView android:id="@+id/wkd1" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="11sp" android:fontFamily="sans-serif-medium" />
+        <TextView android:id="@+id/wkd2" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="11sp" android:fontFamily="sans-serif-medium" />
+        <TextView android:id="@+id/wkd3" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="11sp" android:fontFamily="sans-serif-medium" />
+        <TextView android:id="@+id/wkd4" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="11sp" android:fontFamily="sans-serif-medium" />
+        <TextView android:id="@+id/wkd5" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="11sp" android:fontFamily="sans-serif-medium" />
+        <TextView android:id="@+id/wkd6" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:gravity="center" android:textSize="11sp" android:fontFamily="sans-serif-medium" />
+    </LinearLayout>
+
+    <ScrollView
+        android:id="@+id/wk_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none">
+
+        <FrameLayout
+            android:id="@+id/wk_timeline_holder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </ScrollView>
+</LinearLayout>
