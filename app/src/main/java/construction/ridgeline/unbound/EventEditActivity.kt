@@ -157,6 +157,9 @@ class EventEditActivity : Activity() {
                 startCal.set(Calendar.SECOND, 0); startCal.set(Calendar.MILLISECOND, 0)
                 endCal.timeInMillis = startCal.timeInMillis + 60L * 60 * 1000
             }
+            // new events default to the calendar chosen in the app settings
+            val di = cals.indexOfFirst { it.id == Prefs.defaultCalId(this) }
+            if (di >= 0) spinner.setSelection(di)
         }
 
         allday.setOnCheckedChangeListener { _, on -> applyAllDay(on) }

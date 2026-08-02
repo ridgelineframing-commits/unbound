@@ -52,6 +52,10 @@ object Prefs {
     fun strikePast(c: Context): Boolean = sp(c).getBoolean("strike", true)
     fun setStrikePast(c: Context, v: Boolean) = sp(c).edit().putBoolean("strike", v).apply()
 
+    /** Calendar id new events default to (-1 = first writable calendar). */
+    fun defaultCalId(c: Context): Long = sp(c).getLong("default_cal", -1L)
+    fun setDefaultCalId(c: Context, id: Long) = sp(c).edit().putLong("default_cal", id).apply()
+
     fun resolveDark(c: Context): Boolean = when (theme(c)) {
         1 -> false
         2 -> true

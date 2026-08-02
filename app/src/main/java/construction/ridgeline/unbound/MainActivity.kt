@@ -24,6 +24,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AbsListView
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.CheckBox
@@ -33,6 +35,7 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.ScrollView
 import android.widget.SeekBar
+import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import java.time.DayOfWeek
@@ -623,7 +626,9 @@ class MainActivity : Activity() {
                 CalendarRepository.instanceCounts(this@MainActivity, nowMs, nowMs + 30L * 24 * 60 * 60 * 1000)
             }
             val cals = withContext(Dispatchers.IO) { CalendarRepository.calendars(this@MainActivity) }
+            val writable = withContext(Dispatchers.IO) { CalendarRepository.writableCalendars(this@MainActivity) }
             if (!granted()) return@launch
+            setupDefaultCalendar(writable)
             val hidden = Prefs.hiddenCals(this@MainActivity)
             box.removeAllViews()
             for (c in cals) {
@@ -759,6 +764,26 @@ class MainActivity : Activity() {
     private fun setWidgetModeAll(m: Int) {
         for (id in widgetIds()) Prefs.setMode(this, id, m)
         pokeWidgets()
+    }
+
+    private fun setupDefaultCalendar(writable: List<CalInfo>) {
+        val sp = findViewById<Spinner>(R.id.app_default_cal)
+        if (writable.isEmpty()) { sp.visibility = View.GONE; return }
+        sp.visibility = View.VISIBLE
+        val adapter = object : ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, writable.map { it.name }) {
+            override fun getView(pos: Int, cv: View?, parent: ViewGroup): View =
+                (super.getView(pos, cv, parent) as TextView).apply { setTextColor(pal.ink) }
+        }
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        sp.adapter = adapter
+        val idx = writable.indexOfFirst { it.id == Prefs.defaultCalId(this) }.takeIf { it >= 0 } ?: 0
+        sp.setSelection(idx)
+        sp.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                Prefs.setDefaultCalId(this@MainActivity, writable[position].id)
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
     }
 
     private fun saveCals(box: LinearLayout) {
