@@ -778,13 +778,9 @@ class MainActivity : Activity() {
     }
 
     private fun openDay(date: LocalDate) {
-        try {
-            val millis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            val builder = CalendarContract.CONTENT_URI.buildUpon().appendPath("time")
-            ContentUris.appendId(builder, millis)
-            startActivity(Intent(Intent.ACTION_VIEW).setData(builder.build()))
-        } catch (_: Exception) {
-        }
+        // Tapping a day anywhere in the app opens Unbound's own Day timeline
+        // rather than bouncing out to the system calendar app.
+        openDayTimeline(date)
     }
 
     override fun onRequestPermissionsResult(
