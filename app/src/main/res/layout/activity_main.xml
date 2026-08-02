@@ -237,6 +237,23 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:text="DEFAULT CALENDAR FOR NEW EVENTS"
+                    android:textColor="#A8A29E"
+                    android:textSize="11sp"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="26dp" />
+
+                <Spinner
+                    android:id="@+id/app_default_cal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:backgroundTint="#7C828E" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:text="CALENDARS"
                     android:textColor="#A8A29E"
                     android:textSize="11sp"
